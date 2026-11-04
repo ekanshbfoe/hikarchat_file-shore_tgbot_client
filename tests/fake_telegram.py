@@ -38,6 +38,7 @@ from aiogram.types import (
     Chat,
     ChatFullInfo,
     ChatInviteLink,
+    ChatMemberAdministrator,
     ChatMemberMember,
     File,
     Message,
@@ -51,6 +52,15 @@ from aiogram.types import (
 BOT_ID = 42
 BOT_USER = User(id=BOT_ID, is_bot=True, first_name="Store", username="store_bot")
 _NOW = datetime(2026, 1, 1, tzinfo=UTC)
+
+
+def bot_admin(user_id: int = BOT_ID, can_invite_users: bool = True) -> ChatMemberAdministrator:
+    # Only these fields matter here, and Telegram keeps adding required ones.
+    return ChatMemberAdministrator.model_construct(
+        status="administrator",
+        user=User(id=user_id, is_bot=user_id == BOT_ID, first_name="B"),
+        can_invite_users=can_invite_users,
+    )
 
 
 class FakeSession(BaseSession):
