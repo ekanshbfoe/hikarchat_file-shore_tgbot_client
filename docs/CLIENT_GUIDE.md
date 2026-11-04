@@ -42,7 +42,18 @@ Fixing a channel's name, or removing a channel and adding it back later, won't a
 **Good to know**
 - If someone leaves a Telegram channel, the bot notices and asks them to rejoin.
 - For YouTube and TikTok, the bot can't tell if someone unsubscribes later.
-- A screenshot can't be fully proven real, so a fake could occasionally get through. After 3 tries that don't pass, the bot lets the person through so that real followers never get stuck.
+- A screenshot can't be fully proven real, so a fake could occasionally get through. After 3 tries that don't pass, the bot lets the person through so that real followers never get stuck, and asks you to review them in your logs group.
+
+## Your logs group
+
+The bot posts what's happening to your logs group: new users, links created, broadcasts, bans, and any change to settings, moderators or force subscribe.
+
+**Reviewing people the bot let through.** If someone's screenshot doesn't pass after 3 tries, the bot still gives them their files, then shows you their last screenshot here with two buttons:
+
+- **Approve:** nothing changes for them.
+- **Not Approve:** they're banned from the bot.
+
+Only you and your moderators can press these. Whoever presses first decides. Files they've already received can't be taken back. If you ban someone by mistake, send `/unban` with their user number, and they'll need to send a new screenshot.
 
 ## Other settings
 
@@ -73,4 +84,5 @@ Open `/settings` for these:
 
 - **Don't remove the bot from your backup channel, or take away its admin rights.** New files couldn't be saved, and existing links would stop working. If this happens, the bot will message you.
 - **Don't delete posts from your backup channel.** Links that use those files will stop delivering them.
+- **Don't remove the bot from your logs group.** You'd stop seeing activity and reviews, though the bot keeps working. If this happens, the bot will message you.
 - **Don't change the bot's username.** Links you've already shared would stop working.

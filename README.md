@@ -32,6 +32,14 @@ nothing relevant can be read. If the check breaks or times out, the person passe
 `SCREENSHOT_MAX_ATTEMPTS` failures (default 3) the person passes anyway so nobody is ever stuck,
 which also means random images can get through. Set it to `0` to keep asking.
 
+**Logs group.** With `LOG_CHAT_ID` set, new users and staff actions are posted to that group, and
+anyone let through after repeated failures appears with their last screenshot and Approve / Not
+Approve buttons. Only the owner and moderators can decide, and the first decision wins. Not Approve
+bans the person from the bot and withdraws their verification. Files already delivered stay with
+them. Posting uses a paced queue (Telegram allows about 20 messages a minute in a group), reviews go
+first, and a full queue drops ordinary lines. The queue is held in memory, so a restart loses
+anything not yet posted. Shortener keys never go to the group.
+
 ## Deploying to Render
 
 1. Create a free Postgres database on Neon or Supabase.
@@ -48,6 +56,7 @@ which also means random images can get through. Set it to `0` to keep asking.
 | `DATABASE_URL` | Yes | Any `postgres://` style URL |
 | `DATABASE_DIRECT_URL` | No | Non-pooled URL, used only for migrations |
 | `MODERATOR_USERNAMES` | No | Comma separated. Applied once each, so removed moderators stay removed |
+| `LOG_CHAT_ID` | No | The client's logs group, starting with `-100`. Not the backup channel. The bot must be a member |
 | `DEV_CHAT_ID` | No | Where failure details go. Never give this chat to the client |
 | `SCREENSHOT_MAX_ATTEMPTS` | No | See above |
 
