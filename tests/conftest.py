@@ -42,3 +42,47 @@ async def repos(db, tmp_path):
     cache = await open_cache(tmp_path / "cache.sqlite3")
     yield Repos(Store(db, cache))
     await cache.close()
+
+
+class World:
+    """A running bot with people to talk to it."""
+
+    def __init__(self, app, dispatcher, session):
+        from tests.helpers import OWNER_ID
+
+        self.app = app
+        self.dispatcher = dispatcher
+        self.telegram = session
+        self.owner = self.person(OWNER_ID, "owner_name")
+
+    def person(self, user_id, username=None):
+        from tests.fake_telegram import Chatter
+
+        return Chatter(self.dispatcher, self.app.bot, user_id, username)
+
+
+@pytest.fixture
+async def world(db, tmp_path):
+    from bot.app import App
+    from bot.config import Settings
+    from bot.dispatcher import build_dispatcher
+    from tests.fake_telegram import FakeSession, make_bot
+    from tests.helpers import OWNER_ID, open_cache
+
+    config = Settings(
+        _env_file=None,
+        bot_token="42:TEST",
+        owner_id=OWNER_ID,
+        backup_channel_id=-100500,
+        database_url=TEST_DATABASE_URL,
+        dev_chat_id=None,
+    )
+    cache = await open_cache(tmp_path / "world.sqlite3")
+    session = FakeSession()
+    app = App(config=config, bot=make_bot(session), store=Store(db, cache))
+    dispatcher = build_dispatcher(app)
+    yield World(app, dispatcher, session)
+    # Routers are module level and may only have one parent.
+    for router in dispatcher.sub_routers:
+        router._parent_router = None
+    await cache.close()
