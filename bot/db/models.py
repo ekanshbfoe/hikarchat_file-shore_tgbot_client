@@ -126,6 +126,9 @@ verifications = Table(
     Column("method", String(16), nullable=False),
     Column("failed_attempts", Integer, nullable=False, server_default=text("0")),
     Column("verified", Boolean, nullable=False, server_default=text("false")),
+    # For people let through after repeated failed screenshots:
+    # pending until staff decide in the logs group, then approved or rejected.
+    Column("review", String(16)),
     _now(),
 )
 

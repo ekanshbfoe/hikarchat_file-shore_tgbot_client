@@ -18,6 +18,10 @@ YOUTUBE = "youtube"
 TIKTOK = "tiktok"
 SOCIAL = (YOUTUBE, TIKTOK)
 
+REVIEW_PENDING = "pending"
+REVIEW_APPROVED = "approved"
+REVIEW_REJECTED = "rejected"
+
 
 class AddStatus(StrEnum):
     ADDED = "added"
@@ -173,8 +177,15 @@ class TargetsRepo:
 
         return await self.store.read_through(f"verified:{user_id}", LONG_TTL, loader)
 
-    async def mark_verified(self, user_id: int, target: dict, method: str) -> None:
-        values = {"version": target["version"], "method": method, "verified": True}
+    async def mark_verified(
+        self, user_id: int, target: dict, method: str, review: str | None = None
+    ) -> None:
+        values = {
+            "version": target["version"],
+            "method": method,
+            "verified": True,
+            "review": review,
+        }
         statement = insert(verifications).values(user_id=user_id, target_id=target["id"], **values)
         async with self.store.db.write() as conn:
             await conn.execute(
@@ -184,6 +195,29 @@ class TargetsRepo:
                 )
             )
         await self.store.cache.delete(f"verified:{user_id}")
+
+    async def decide_review(self, user_id: int, target_id: int, approved: bool) -> bool:
+        """The first decision wins, so two people tapping can't contradict each other.
+        Rejecting also withdraws the verification and clears their attempts, so if they
+        are ever unbanned they start again. Returns whether this decision took effect."""
+        values = {"review": REVIEW_APPROVED if approved else REVIEW_REJECTED}
+        if not approved:
+            values |= {"verified": False, "failed_attempts": 0}
+        async with self.store.db.write() as conn:
+            row = (
+                await conn.execute(
+                    update(verifications)
+                    .where(
+                        verifications.c.user_id == user_id,
+                        verifications.c.target_id == target_id,
+                        verifications.c.review == REVIEW_PENDING,
+                    )
+                    .values(**values)
+                    .returning(verifications.c.user_id)
+                )
+            ).first()
+        await self.store.cache.delete(f"verified:{user_id}")
+        return row is not None
 
     async def record_failure(self, user_id: int, target: dict) -> int:
         """Count a failed screenshot and return the running total for this version."""
