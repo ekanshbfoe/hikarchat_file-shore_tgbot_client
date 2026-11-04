@@ -10,7 +10,7 @@ from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMar
 from bot import texts
 from bot.app import App
 from bot.db.links import SPECIAL, StaleEditError
-from bot.filters import IsStaff
+from bot.filters import IsInput, IsStaff
 from bot.services import share, storing
 from bot.services.storing import StorageBlockedError
 from bot.states import Collect
@@ -61,7 +61,7 @@ async def cancel_button(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.message.answer(texts.CANCELLED)
 
 
-@router.message(Collect.messages, IsStaff())
+@router.message(Collect.messages, IsStaff(), IsInput())
 async def collect(message: Message, state: FSMContext) -> None:
     if message.text and message.text.startswith("/"):
         await message.answer(texts.COLLECT_COMMAND_HINT, reply_markup=COLLECT_BUTTONS)

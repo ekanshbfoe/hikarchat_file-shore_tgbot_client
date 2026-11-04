@@ -9,7 +9,7 @@ from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMar
 from bot import texts
 from bot.app import App
 from bot.db.links import SPECIAL, StaleEditError
-from bot.filters import IsStaff
+from bot.filters import IsInput, IsStaff
 from bot.handlers.links import start_collecting
 from bot.services import share
 from bot.states import Special
@@ -96,7 +96,7 @@ async def new(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.message.answer(texts.SPECIAL_NAME_PROMPT)
 
 
-@router.message(Special.name, IsStaff())
+@router.message(Special.name, IsStaff(), IsInput())
 async def name(message: Message, state: FSMContext) -> None:
     title = (message.text or "").strip()
     if not title or title.startswith("/") or len(title) > MAX_NAME:

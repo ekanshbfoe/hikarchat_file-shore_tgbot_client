@@ -7,7 +7,7 @@ from aiogram.types import Message
 
 from bot import texts
 from bot.app import App
-from bot.filters import IsStaff
+from bot.filters import IsInput, IsStaff
 from bot.services import batch as batch_service
 from bot.states import Batch
 
@@ -21,7 +21,7 @@ async def batch(message: Message, state: FSMContext) -> None:
     await message.answer(texts.BATCH_FIRST)
 
 
-@router.message(Batch.first, IsStaff())
+@router.message(Batch.first, IsStaff(), IsInput())
 async def first_post(message: Message, state: FSMContext, app: App) -> None:
     post = await batch_service.parse_post(app, message)
     if post is None:
@@ -37,7 +37,7 @@ async def first_post(message: Message, state: FSMContext, app: App) -> None:
     await message.answer(texts.BATCH_LAST)
 
 
-@router.message(Batch.last, IsStaff())
+@router.message(Batch.last, IsStaff(), IsInput())
 async def last_post(message: Message, state: FSMContext, app: App) -> None:
     post = await batch_service.parse_post(app, message)
     if post is None:
