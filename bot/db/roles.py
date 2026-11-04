@@ -5,6 +5,7 @@ recorded at first contact and from then on only the id counts: renaming keeps ac
 and someone else later taking the old username gets nothing.
 """
 
+import re
 from enum import StrEnum
 
 from sqlalchemy import delete, select, update
@@ -13,6 +14,8 @@ from bot.db.models import roles, users
 from bot.db.settings import SettingsRepo
 from bot.db.store import SHORT_TTL, Store
 from bot.db.users import clean_username
+
+_USERNAME = re.compile(r"[a-z][a-z0-9_]{0,31}")
 
 
 class Role(StrEnum):
@@ -74,7 +77,7 @@ class RolesRepo:
 
     async def add_by_username(self, username: str, added_by: int) -> AddResult:
         name = clean_username(username)
-        if not name or not name.replace("_", "").isalnum() or len(name) > 32:
+        if not name or not _USERNAME.fullmatch(name):
             return AddResult.INVALID
         async with self.store.db.write() as conn:
             known_id = (
