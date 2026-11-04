@@ -71,3 +71,25 @@ async def test_file_corrupted_while_running_recovers(tmp_path):
     await local.set("a", 1, 60)
     assert (await local.get("a"))[1] == 1
     await local.close()
+
+
+async def test_work_finishing_after_shutdown_doesnt_reopen_the_cache(cache):
+    import threading
+
+    await cache.set("a", 1, 60)
+    await cache.close()
+    assert await cache.get("a") == (False, None, False)
+    await cache.set("a", 1, 60)
+    assert cache._conn is None
+    # An open connection's thread would stop the process from exiting.
+    assert not [t for t in threading.enumerate() if "connection_worker" in repr(t._target)]
+
+
+async def test_shutdown_during_a_read_doesnt_reopen_the_cache(tmp_path):
+    local = LocalCache(str(tmp_path / "c.sqlite3"))
+    await local.open()
+    conn = local._conn
+    await local.close()
+    local._conn = conn  # A read already under way still holds the old connection.
+    assert await local.get("a") == (False, None, False)
+    assert local._conn is None

@@ -28,6 +28,9 @@ class LocalCache:
     def __init__(self, path: str):
         self.path = path
         self._conn: aiosqlite.Connection | None = None
+        # Set by close(). Work still finishing during shutdown must not reopen the file,
+        # because an open connection's thread would stop the process from exiting.
+        self._closed = False
 
     async def open(self) -> None:
         try:
@@ -44,7 +47,9 @@ class LocalCache:
         await self._conn.commit()
 
     async def _recreate(self) -> None:
-        await self.close()
+        await self._disconnect()
+        if self._closed:
+            return
         for suffix in ("", "-wal", "-shm"):
             try:
                 os.remove(self.path + suffix)
@@ -54,9 +59,13 @@ class LocalCache:
             await self._open()
         except Exception:
             log.warning("Local cache could not be recreated", exc_info=True)
-            await self.close()
+            await self._disconnect()
 
     async def close(self) -> None:
+        self._closed = True
+        await self._disconnect()
+
+    async def _disconnect(self) -> None:
         if self._conn is not None:
             conn, self._conn = self._conn, None
             try:
