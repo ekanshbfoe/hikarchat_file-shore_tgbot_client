@@ -179,6 +179,23 @@ class FakeSession(BaseSession):
                 return call.reply_markup
         raise AssertionError(f"nothing sent to {chat_id}")
 
+    def set_member(self, status_by_chat: dict[int, str]) -> None:
+        """Membership answers, per chat. Chats not listed say the person hasn't joined."""
+        from aiogram.types import ChatMemberBanned, ChatMemberLeft
+
+        def answer(method):
+            status = status_by_chat.get(method.chat_id, "left")
+            user = User(id=method.user_id, is_bot=False, first_name="U")
+            if status == "member":
+                return ChatMemberMember(user=user)
+            if status == "kicked":
+                return ChatMemberBanned(user=user, until_date=0)
+            if status == "admin":
+                return bot_admin(method.user_id)
+            return ChatMemberLeft(user=user)
+
+        self.set(GetChatMember, answer)
+
     def of_edit_text(self, index: int) -> str:
         return self.of(EditMessageText)[index].text
 

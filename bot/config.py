@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     run_mode: Literal["webhook", "polling"] = "webhook"
     port: int = 8080
     local_cache_path: str = "local_cache.sqlite3"
+    # Failed screenshots allowed before someone is let through anyway, so a genuine
+    # person is never stuck. 0 means keep asking forever.
+    screenshot_max_attempts: int = 3
 
     @field_validator("database_direct_url", "dev_chat_id", "webhook_base_url", mode="before")
     @classmethod
