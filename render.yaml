@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: file-store-bot
+    runtime: docker
+    plan: free
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: BOT_TOKEN
+        sync: false
+      - key: OWNER_ID
+        sync: false
+      - key: BACKUP_CHANNEL_ID
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_DIRECT_URL
+        sync: false
+      - key: MODERATOR_USERNAMES
+        sync: false
+      - key: DEV_CHAT_ID
+        sync: false
+      - key: RUN_MODE
+        value: webhook
