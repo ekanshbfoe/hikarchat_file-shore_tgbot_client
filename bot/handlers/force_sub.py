@@ -15,7 +15,7 @@ from aiogram.types import CallbackQuery, ChatJoinRequest, Message
 
 from bot import texts
 from bot.app import App
-from bot.db.targets import SOCIAL, YOUTUBE
+from bot.db.targets import REVIEW_PENDING, SOCIAL, YOUTUBE
 from bot.filters import IsInput
 from bot.services import flow, gate, verification
 from bot.services.verification import Verdict
@@ -92,8 +92,12 @@ async def picture(message: Message, app: App) -> None:
             await progress.edit_text(_failure_text(check.verdict, check.target))
             return
         log.info("User %s let through after %s attempts", user_id, attempts)
-
-    await app.targets.mark_verified(user_id, check.target, "screenshot")
+        # They get their files now. Staff can review the screenshot and ban them after.
+        review = REVIEW_PENDING if app.log.enabled else None
+        await app.targets.mark_verified(user_id, check.target, "let_through", review=review)
+        app.log.review(message, check.target, attempts)
+    else:
+        await app.targets.mark_verified(user_id, check.target, "screenshot")
     await progress.edit_text(texts.SCREENSHOT_OK)
     await flow.continue_flow(app, user_id)
 

@@ -63,10 +63,11 @@ class World:
 
 @pytest.fixture(autouse=True)
 def _no_pacing(monkeypatch):
-    from bot.services import batch, broadcast, delivery
+    from bot.services import activity_log, batch, broadcast, delivery
 
     monkeypatch.setattr(delivery, "PACE_SECONDS", 0)
     monkeypatch.setattr(batch, "PACE_SECONDS", 0)
+    monkeypatch.setattr(activity_log, "PACE_SECONDS", 0)
     monkeypatch.setattr(broadcast, "PACE_SECONDS", 0)
 
 
@@ -93,8 +94,10 @@ async def world(db, tmp_path):
     session.clear()
     app = App(config=config, bot=bot, store=Store(db, cache))
     dispatcher = build_dispatcher(app)
+    app.log.start()
     yield World(app, dispatcher, session)
     await app.runner.stop()
+    await app.log.stop()
     # Routers are module level and may only have one parent.
     for router in dispatcher.sub_routers:
         router._parent_router = None
