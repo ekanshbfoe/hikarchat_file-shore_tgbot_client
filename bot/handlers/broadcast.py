@@ -21,7 +21,7 @@ async def _preview(message: Message, source: Message, app: App) -> None:
     if not is_copyable(source):
         await message.answer(texts.BROADCAST_NOT_COPYABLE)
         return
-    count = await app.users.count()
+    count = await app.users.count_reachable()
     await app.bot.copy_message(message.chat.id, source.chat.id, source.message_id)
     await message.answer(
         texts.BROADCAST_PREVIEW.format(count=count),

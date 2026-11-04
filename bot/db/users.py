@@ -88,9 +88,15 @@ class UsersRepo:
         async with self.store.db.write() as conn:
             await conn.execute(update(users).where(users.c.id == user_id).values(pending_code=code))
 
-    async def count(self) -> int:
+    async def count_reachable(self) -> int:
         async def loader(conn):
-            return (await conn.execute(select(func.count()).select_from(users))).scalar()
+            return (
+                await conn.execute(
+                    select(func.count())
+                    .select_from(users)
+                    .where(users.c.is_active, users.c.is_banned.is_(False))
+                )
+            ).scalar()
 
         return await self.store.db.read(loader)
 

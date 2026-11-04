@@ -321,3 +321,17 @@ async def test_group_upgrade_moves_chat_id_and_keeps_verification(repos):
     assert moved["id"] == group["id"]
     assert await valid(repos, 1, moved)
     assert await repos.targets.find_by_chat(-5) is None
+
+
+async def test_numbers_are_not_usernames(repos):
+    assert await repos.roles.add_by_username("12345", OWNER_ID) == AddResult.INVALID
+    assert await repos.roles.add_by_username("_name", OWNER_ID) == AddResult.INVALID
+    assert await repos.roles.add_by_username("a" * 33, OWNER_ID) == AddResult.INVALID
+
+
+async def test_reachable_count_skips_blocked_and_banned(repos):
+    for user_id in (1, 2, 3):
+        await repos.users.touch(user_id, None, None)
+    await repos.users.deactivate(1)
+    await repos.users.set_banned(2, True)
+    assert await repos.users.count_reachable() == 1
