@@ -63,10 +63,11 @@ class World:
 
 @pytest.fixture(autouse=True)
 def _no_pacing(monkeypatch):
-    from bot.services import batch, delivery
+    from bot.services import batch, broadcast, delivery
 
     monkeypatch.setattr(delivery, "PACE_SECONDS", 0)
     monkeypatch.setattr(batch, "PACE_SECONDS", 0)
+    monkeypatch.setattr(broadcast, "PACE_SECONDS", 0)
 
 
 @pytest.fixture

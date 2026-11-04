@@ -8,15 +8,27 @@ from aiogram.fsm.storage.memory import SimpleEventIsolation
 from bot.app import App
 from bot.db.fsm_storage import PostgresStorage
 from bot.errors import on_error
-from bot.handlers import batch, fallback, links, moderation, special, start
+from bot.handlers import (
+    batch,
+    broadcast,
+    fallback,
+    links,
+    moderation,
+    settings,
+    shortener,
+    special,
+    start,
+)
 from bot.middlewares import IdentityMiddleware
 from bot.services import batch as batch_service
+from bot.services import broadcast as broadcast_service
 from bot.services.runner import JobRunner
 
 
 def _build_runner(app: App) -> JobRunner:
     runner = JobRunner(app)
     runner.register(batch_service.KIND, batch_service.run)
+    runner.register(broadcast_service.KIND, broadcast_service.run)
     return runner
 
 
@@ -40,5 +52,8 @@ def build_dispatcher(app: App, events_isolation: BaseEventIsolation | None = Non
     dispatcher.include_router(batch.router)
     dispatcher.include_router(special.router)
     dispatcher.include_router(links.router)
+    dispatcher.include_router(shortener.router)
+    dispatcher.include_router(settings.router)
+    dispatcher.include_router(broadcast.router)
     dispatcher.include_router(fallback.router)
     return dispatcher
