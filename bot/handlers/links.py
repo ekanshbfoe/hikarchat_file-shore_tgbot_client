@@ -5,7 +5,13 @@ from dataclasses import asdict
 from aiogram import F, Router
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
+from aiogram.types import (
+    CallbackQuery,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    Message,
+    ReplyKeyboardRemove,
+)
 
 from bot import texts
 from bot.app import App
@@ -51,7 +57,7 @@ async def cancel_command(message: Message, state: FSMContext) -> None:
         await message.answer(texts.NOTHING_TO_CANCEL)
         return
     await state.clear()
-    await message.answer(texts.CANCELLED)
+    await message.answer(texts.CANCELLED, reply_markup=ReplyKeyboardRemove())
 
 
 @router.callback_query(F.data == "cancel")

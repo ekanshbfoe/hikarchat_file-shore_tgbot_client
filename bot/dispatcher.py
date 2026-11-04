@@ -12,6 +12,8 @@ from bot.handlers import (
     batch,
     broadcast,
     fallback,
+    force_sub,
+    force_sub_settings,
     links,
     moderation,
     settings,
@@ -55,5 +57,7 @@ def build_dispatcher(app: App, events_isolation: BaseEventIsolation | None = Non
     dispatcher.include_router(shortener.router)
     dispatcher.include_router(settings.router)
     dispatcher.include_router(broadcast.router)
+    dispatcher.include_router(force_sub_settings.router)
+    dispatcher.include_router(force_sub.router)
     dispatcher.include_router(fallback.router)
     return dispatcher

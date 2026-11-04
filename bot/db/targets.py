@@ -102,7 +102,12 @@ class TargetsRepo:
         return _as_dict(row), AddStatus.READDED
 
     async def replace(
-        self, target_id: int, identity: str, display_name: str, url: str | None
+        self,
+        target_id: int,
+        identity: str,
+        display_name: str,
+        url: str | None,
+        chat_id: int | None = None,
     ) -> tuple[dict, AddStatus]:
         """Swap to a different channel: people must verify the new one."""
         async with self.store.db.write() as conn:
@@ -116,7 +121,7 @@ class TargetsRepo:
             ).first()
             if old is None:
                 raise LookupError(target_id)
-            result = await self._add(conn, old.platform, identity, display_name, url, None)
+            result = await self._add(conn, old.platform, identity, display_name, url, chat_id)
         await self.store.cache.delete("targets")
         return result
 
