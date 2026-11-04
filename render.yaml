@@ -18,6 +18,8 @@ services:
         sync: false
       - key: MODERATOR_USERNAMES
         sync: false
+      - key: LOG_CHAT_ID
+        sync: false
       - key: DEV_CHAT_ID
         sync: false
       - key: RUN_MODE

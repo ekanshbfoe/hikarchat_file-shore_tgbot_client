@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     database_direct_url: str | None = None
     moderator_usernames: Annotated[list[str], NoDecode] = Field(default_factory=list)
     dev_chat_id: int | None = None
+    # Group the client reads to see activity and review let-through users.
+    log_chat_id: int | None = None
     webhook_base_url: str | None = Field(
         default=None,
         validation_alias=AliasChoices("WEBHOOK_BASE_URL", "RENDER_EXTERNAL_URL"),
@@ -34,7 +36,12 @@ class Settings(BaseSettings):
     telegram_api_url: str | None = None
 
     @field_validator(
-        "database_direct_url", "dev_chat_id", "webhook_base_url", "telegram_api_url", mode="before"
+        "database_direct_url",
+        "dev_chat_id",
+        "log_chat_id",
+        "webhook_base_url",
+        "telegram_api_url",
+        mode="before",
     )
     @classmethod
     def _blank_is_none(cls, value):

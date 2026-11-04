@@ -63,6 +63,7 @@ async def prepare(app: App, migrate_url: str) -> None:
     await app.roles.seed(app.config.moderator_usernames)
     await set_default_menu(app)
     await backup.check_backup_channel(app)
+    await app.log.check_access()
     await app.runner.resume_all()
 
 
@@ -113,6 +114,7 @@ async def _lifecycle(web_app: web.Application, app: App, migrate_url: str):
     async def after_ready() -> None:
         await ensure_webhook(app)
 
+    app.log.start()
     preparing = asyncio.create_task(
         _prepare_until_ready(app, migrate_url, web_app[READY], after_ready)
     )
@@ -122,6 +124,7 @@ async def _lifecycle(web_app: web.Application, app: App, migrate_url: str):
     upkeep.cancel()
     await asyncio.gather(preparing, upkeep, return_exceptions=True)
     await app.runner.stop()
+    await app.log.stop()
     await app.store.cache.close()
     await app.store.db.close()
     # The webhook is left in place: the next instance is already taking over.
@@ -180,11 +183,13 @@ async def run_polling(config: Settings) -> None:
     await prepare(app, config.database_direct_url or config.database_url)
     await app.bot.delete_webhook(drop_pending_updates=False)
     upkeep = asyncio.create_task(maintenance.run_forever(app))
+    app.log.start()
     try:
         await dispatcher.start_polling(app.bot, allowed_updates=ALLOWED_UPDATES)
     finally:
         upkeep.cancel()
         await app.runner.stop()
+        await app.log.stop()
         await app.store.cache.close()
         await app.store.db.close()
 

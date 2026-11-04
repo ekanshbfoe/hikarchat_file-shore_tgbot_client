@@ -12,6 +12,7 @@ from bot.db.settings import SettingsRepo
 from bot.db.store import Store
 from bot.db.targets import TargetsRepo
 from bot.db.users import UsersRepo
+from bot.services.activity_log import ActivityLog
 
 
 @dataclass
@@ -25,6 +26,7 @@ class App:
     links: LinksRepo = field(init=False)
     targets: TargetsRepo = field(init=False)
     jobs: JobsRepo = field(init=False)
+    log: ActivityLog = field(init=False)
     runner: object = None
 
     def __post_init__(self) -> None:
@@ -34,6 +36,7 @@ class App:
         self.links = LinksRepo(self.store)
         self.targets = TargetsRepo(self.store)
         self.jobs = JobsRepo(self.store)
+        self.log = ActivityLog(self)
 
     async def bot_username(self) -> str:
         me = await self.bot.me()

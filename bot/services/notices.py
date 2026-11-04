@@ -1,8 +1,12 @@
 """Tells the owner about things only they can fix, without nagging."""
 
-import logging
+from __future__ import annotations
 
-from bot.app import App
+import logging
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from bot.app import App
 
 log = logging.getLogger(__name__)
 QUIET_SECONDS = 24 * 3600.0
