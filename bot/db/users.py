@@ -1,6 +1,6 @@
 """Users, bans and the link a user is waiting for."""
 
-from sqlalchemy import func, select, update
+from sqlalchemy import func, literal_column, select, update
 from sqlalchemy.dialects.postgresql import insert
 
 from bot.db.models import users
@@ -17,24 +17,28 @@ class UsersRepo:
     def __init__(self, store: Store):
         self.store = store
 
-    async def touch(self, user_id: int, username: str | None, first_name: str | None) -> None:
-        """Record a user. Skips the cloud when nothing changed recently."""
+    async def touch(self, user_id: int, username: str | None, first_name: str | None) -> bool:
+        """Record a user and return True if this is their first contact.
+        Skips the cloud when nothing changed recently."""
         username = clean_username(username)
         fingerprint = [username, first_name]
         found, value, fresh = await self.store.cache.get(f"seen:{user_id}")
         if found and fresh and value == fingerprint:
-            return
+            return False
         values = {"id": user_id, "username": username, "first_name": first_name}
         statement = insert(users).values(**values)
         async with self.store.db.write() as conn:
-            await conn.execute(
-                statement.on_conflict_do_update(
-                    index_elements=[users.c.id],
-                    # Writing to the bot again means they have unblocked it.
-                    set_={"username": username, "first_name": first_name, "is_active": True},
+            row = (
+                await conn.execute(
+                    statement.on_conflict_do_update(
+                        index_elements=[users.c.id],
+                        # Writing to the bot again means they have unblocked it.
+                        set_={"username": username, "first_name": first_name, "is_active": True},
+                    ).returning(literal_column("(xmax = 0)").label("inserted"))
                 )
-            )
+            ).first()
         await self.store.cache.set(f"seen:{user_id}", fingerprint, SEEN_TTL)
+        return bool(row.inserted)
 
     async def find_id_by_username(self, username: str) -> int | None:
         name = clean_username(username)
