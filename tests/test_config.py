@@ -42,3 +42,9 @@ def test_webhook_url_needs_a_base():
 def test_render_external_url_is_used(monkeypatch):
     monkeypatch.setenv("RENDER_EXTERNAL_URL", "https://y.onrender.com")
     assert Settings(_env_file=None, **BASE).webhook_base_url == "https://y.onrender.com"
+
+
+def test_blank_webhook_setting_doesnt_hide_render_address(monkeypatch):
+    monkeypatch.setenv("WEBHOOK_BASE_URL", "")
+    monkeypatch.setenv("RENDER_EXTERNAL_URL", "https://z.onrender.com")
+    assert Settings(_env_file=None, **BASE).webhook_base_url == "https://z.onrender.com"

@@ -1,10 +1,11 @@
 """Environment-based configuration."""
 
 import hashlib
+import os
 from functools import cached_property
 from typing import Annotated, Literal
 
-from pydantic import AliasChoices, Field, field_validator
+from pydantic import AliasChoices, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
@@ -45,6 +46,13 @@ class Settings(BaseSettings):
         if isinstance(value, str):
             value = value.split(",")
         return [name.strip().lstrip("@").lower() for name in value if name.strip()]
+
+    @model_validator(mode="after")
+    def _use_render_address_if_blank(self):
+        # A blank WEBHOOK_BASE_URL would otherwise hide the address Render provides.
+        if not self.webhook_base_url:
+            self.webhook_base_url = os.environ.get("RENDER_EXTERNAL_URL") or None
+        return self
 
     @cached_property
     def secret_token(self) -> str:
