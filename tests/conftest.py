@@ -6,6 +6,7 @@ from sqlalchemy import text
 
 from bot.db.engine import Database, build_engine
 from bot.db.models import metadata
+from bot.db.store import Store
 
 TEST_DATABASE_URL = os.environ.get(
     "TEST_DATABASE_URL", "postgres://postgres:test@localhost:55432/fsb_test"
@@ -32,3 +33,12 @@ async def db():
         await conn.execute(text(f"TRUNCATE {tables} RESTART IDENTITY CASCADE"))
     yield database
     await database.close()
+
+
+@pytest.fixture
+async def repos(db, tmp_path):
+    from tests.helpers import Repos, open_cache
+
+    cache = await open_cache(tmp_path / "cache.sqlite3")
+    yield Repos(Store(db, cache))
+    await cache.close()
