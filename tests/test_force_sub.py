@@ -658,3 +658,16 @@ async def test_moderators_and_users_cant_change_force_subscribe(world):
         await person.tap(f"fs:rm:{target['id']}")
         await person.tap("fs:add:youtube")
     assert len(await world.app.targets.list_active()) == 1
+
+
+async def test_banned_person_gets_nothing_from_a_join_request(world, code):
+    await add_channel(world)
+    world.telegram.set_member({})
+    person = world.person(USER)
+    await person.send(f"/start {code}")
+    await world.app.users.set_banned(USER, True)
+    request = ChatJoinRequest(
+        chat=Chat(id=CHANNEL, type="channel"), from_user=person.user, user_chat_id=USER, date=0
+    )
+    await person.feed(chat_join_request=request)
+    assert not delivered(world)

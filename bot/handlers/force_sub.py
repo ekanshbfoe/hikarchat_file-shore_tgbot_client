@@ -160,6 +160,8 @@ async def join_request(request: ChatJoinRequest, app: App) -> None:
         return
     user_id = request.from_user.id
     await app.targets.mark_verified(user_id, target, "join_request")
+    if await app.users.is_banned(user_id):
+        return
     try:
         await flow.continue_flow(app, user_id)
     except TelegramForbiddenError:
