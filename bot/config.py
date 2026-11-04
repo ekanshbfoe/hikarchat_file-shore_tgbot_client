@@ -29,8 +29,12 @@ class Settings(BaseSettings):
     # Failed screenshots allowed before someone is let through anyway, so a genuine
     # person is never stuck. 0 means keep asking forever.
     screenshot_max_attempts: int = 3
+    # Only for a self-hosted Telegram Bot API server. Leave empty normally.
+    telegram_api_url: str | None = None
 
-    @field_validator("database_direct_url", "dev_chat_id", "webhook_base_url", mode="before")
+    @field_validator(
+        "database_direct_url", "dev_chat_id", "webhook_base_url", "telegram_api_url", mode="before"
+    )
     @classmethod
     def _blank_is_none(cls, value):
         return None if value == "" else value
