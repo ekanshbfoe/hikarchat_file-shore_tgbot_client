@@ -11,6 +11,7 @@ from bot.app import App
 from bot.db.jobs import CANCELLED, RUNNING
 from bot.filters import IsInput, IsStaff
 from bot.services import broadcast as service
+from bot.services.activity_log import actor
 from bot.services.storing import is_copyable
 from bot.states import BroadcastFlow
 
@@ -74,6 +75,7 @@ async def go(callback: CallbackQuery, app: App) -> None:
             "progress_id": progress.message_id,
         },
     )
+    app.log.post(texts.LOG_BROADCAST_STARTED.format(actor=actor(callback.from_user)))
     app.runner.start(job_id, service.KIND)
 
 

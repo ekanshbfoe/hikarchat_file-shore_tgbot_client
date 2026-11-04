@@ -18,6 +18,7 @@ from bot.app import App
 from bot.db.links import SPECIAL, StaleEditError
 from bot.filters import IsInput, IsStaff
 from bot.services import share, storing
+from bot.services.activity_log import actor
 from bot.services.storing import StorageBlockedError
 from bot.states import Collect
 
@@ -125,6 +126,11 @@ async def done(callback: CallbackQuery, state: FSMContext, app: App) -> None:
         except StaleEditError:
             await progress.edit_text(texts.SPECIAL_STALE)
             return
+        app.log.post(
+            texts.LOG_LINK_EDITED.format(
+                actor=actor(callback.from_user), link=await share.plain_link(app, link["code"])
+            )
+        )
         await progress.edit_text(
             texts.SPECIAL_UPDATED + "\n\n" + await share.share_link(app, link["code"])
         )
@@ -132,4 +138,11 @@ async def done(callback: CallbackQuery, state: FSMContext, app: App) -> None:
 
     title = data.get("title") if data["kind"] == SPECIAL else None
     code = await app.links.create(data["kind"], callback.from_user.id, items, title=title)
+    app.log.post(
+        texts.LOG_LINK_CREATED.format(
+            actor=actor(callback.from_user),
+            count=len(items),
+            link=await share.plain_link(app, code),
+        )
+    )
     await progress.edit_text(texts.LINK_READY.format(link=await share.share_link(app, code)))

@@ -115,6 +115,13 @@ async def run(app: App, job: dict) -> None:
         await app.links.delete(code)
         await _say(app, job, texts.BATCH_EMPTY)
         return
+    app.log.post(
+        texts.LOG_LINK_CREATED.format(
+            actor=payload.get("actor", job["created_by"]),
+            count=stored,
+            link=await share.plain_link(app, code),
+        )
+    )
     await _say(
         app, job, texts.BATCH_DONE.format(count=stored, link=await share.share_link(app, code))
     )

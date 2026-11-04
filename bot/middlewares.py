@@ -12,6 +12,7 @@ from bot.app import App
 from bot.db.engine import is_transient
 from bot.db.roles import Role
 from bot.menus import sync_menu
+from bot.services.activity_log import actor
 
 log = logging.getLogger(__name__)
 
@@ -38,7 +39,8 @@ class IdentityMiddleware(BaseMiddleware):
             return None
 
         try:
-            await app.users.touch(user.id, user.username, user.first_name)
+            if await app.users.touch(user.id, user.username, user.first_name):
+                app.log.post(texts.LOG_NEW_USER.format(actor=actor(user)))
         except Exception as error:
             # Remembering a visitor isn't worth blocking them during a cloud hiccup.
             if not is_transient(error):

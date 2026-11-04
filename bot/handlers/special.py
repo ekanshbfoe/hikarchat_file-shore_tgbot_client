@@ -12,6 +12,7 @@ from bot.db.links import SPECIAL, StaleEditError
 from bot.filters import IsInput, IsStaff
 from bot.handlers.links import start_collecting
 from bot.services import share
+from bot.services.activity_log import actor
 from bot.states import Special
 
 router = Router(name="special")
@@ -179,6 +180,11 @@ async def change_item(callback: CallbackQuery, app: App) -> None:
         await callback.answer(texts.SPECIAL_STALE, show_alert=True)
     else:
         await callback.answer(texts.SPECIAL_UPDATED)
+        app.log.post(
+            texts.LOG_LINK_EDITED.format(
+                actor=actor(callback.from_user), link=await share.plain_link(app, code)
+            )
+        )
     link = await _load(callback, app, code)
     if link:
         text, markup = _items_view(link)
@@ -207,6 +213,12 @@ async def delete(callback: CallbackQuery, app: App) -> None:
     link = await _load(callback, app, callback.data.split(":")[2])
     if link:
         await app.links.delete(link["code"])
+        app.log.post(
+            texts.LOG_LINK_DELETED.format(
+                actor=actor(callback.from_user),
+                title=texts.esc(link["title"] or texts.SPECIAL_UNTITLED),
+            )
+        )
         await callback.answer(texts.SPECIAL_DELETED)
         text, markup = await _menu(app)
         await _show(callback, text, markup)

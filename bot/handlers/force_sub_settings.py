@@ -20,6 +20,7 @@ from bot import texts
 from bot.app import App
 from bot.db.targets import SOCIAL, TELEGRAM, TIKTOK, YOUTUBE, AddStatus
 from bot.filters import IsInput, IsOwner
+from bot.services.activity_log import actor, platform_name
 from bot.services.social_links import VideoLinkError, parse_social
 from bot.states import ForceSubFlow
 
@@ -121,6 +122,13 @@ async def remove(callback: CallbackQuery, app: App) -> None:
     target = await _active_target(callback, app)
     if target:
         await app.targets.remove(target["id"])
+        app.log.post(
+            texts.LOG_FS_REMOVED.format(
+                actor=actor(callback.from_user),
+                name=texts.esc(target["display_name"]),
+                platform=platform_name(target),
+            )
+        )
         await callback.answer(texts.FS_REMOVED, show_alert=True)
         await _show(callback, *await _home(app))
 
@@ -145,6 +153,11 @@ async def ask_again(callback: CallbackQuery, app: App) -> None:
     target = await _active_target(callback, app)
     if target:
         await app.targets.ask_everyone_again(target["id"])
+        app.log.post(
+            texts.LOG_FS_ASKED_AGAIN.format(
+                actor=actor(callback.from_user), name=texts.esc(target["display_name"])
+            )
+        )
         await callback.answer()
         await callback.message.answer(
             texts.FS_ASK_AGAIN_DONE.format(name=texts.esc(target["display_name"]))
@@ -173,6 +186,7 @@ async def rename_save(message: Message, state: FSMContext, app: App) -> None:
         return
     data = await state.get_data()
     await app.targets.rename(data["target_id"], name)
+    app.log.post(texts.LOG_FS_RENAMED.format(actor=actor(message.from_user), name=texts.esc(name)))
     await state.clear()
     await message.answer(texts.FS_RENAMED)
     text, markup = await _home(app)
@@ -287,6 +301,7 @@ async def chat_picked(message: Message, state: FSMContext, app: App) -> None:
     data = await state.get_data()
     await state.clear()
     if data.get("replace_id"):
+        old = await app.targets.get(data["replace_id"])
         try:
             target, status = await app.targets.replace(
                 data["replace_id"], str(chat_id), name, url, chat_id=chat_id
@@ -294,10 +309,10 @@ async def chat_picked(message: Message, state: FSMContext, app: App) -> None:
         except LookupError:
             await message.answer(texts.BUTTON_EXPIRED, reply_markup=gone)
             return
-        await _report(message, target, status, replaced=True, markup=gone)
+        await _report(message, app, target, status, old=old, markup=gone)
     else:
         target, status = await app.targets.add(TELEGRAM, str(chat_id), name, url, chat_id=chat_id)
-        await _report(message, target, status, markup=gone)
+        await _report(message, app, target, status, markup=gone)
     text, markup = await _home(app)
     await message.answer(text, reply_markup=markup)
 
@@ -348,6 +363,7 @@ async def name_received(message: Message, state: FSMContext, app: App) -> None:
     data = await state.get_data()
     await state.clear()
     if data.get("replace_id"):
+        old = await app.targets.get(data["replace_id"])
         try:
             target, status = await app.targets.replace(
                 data["replace_id"], data["identity"], name, data["url"]
@@ -355,24 +371,40 @@ async def name_received(message: Message, state: FSMContext, app: App) -> None:
         except LookupError:
             await message.answer(texts.BUTTON_EXPIRED)
             return
-        await _report(message, target, status, replaced=True)
+        await _report(message, app, target, status, old=old)
     else:
         target, status = await app.targets.add(
             data["platform"], data["identity"], name, data["url"]
         )
-        await _report(message, target, status)
+        await _report(message, app, target, status)
     text, markup = await _home(app)
     await message.answer(text, reply_markup=markup)
 
 
 async def _report(
-    message: Message, target: dict, status: AddStatus, replaced: bool = False, markup=None
+    message: Message,
+    app: App,
+    target: dict,
+    status: AddStatus,
+    old: dict | None = None,
+    markup=None,
 ) -> None:
     name = texts.esc(target["display_name"])
+    details = {
+        "actor": actor(message.from_user),
+        "name": name,
+        "platform": platform_name(target),
+        "url": texts.esc(target["url"] or ""),
+    }
     if status == AddStatus.ALREADY:
         template = texts.FS_ALREADY
     elif status == AddStatus.READDED:
         template = texts.FS_READDED
+        app.log.post(texts.LOG_FS_READDED.format(**details))
+    elif old is not None:
+        template = texts.FS_REPLACED
+        app.log.post(texts.LOG_FS_REPLACED.format(old=texts.esc(old["display_name"]), **details))
     else:
-        template = texts.FS_REPLACED if replaced else texts.FS_ADDED
+        template = texts.FS_ADDED
+        app.log.post(texts.LOG_FS_ADDED.format(**details))
     await message.answer(template.format(name=name), reply_markup=markup)

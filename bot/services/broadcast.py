@@ -94,12 +94,14 @@ async def run(app: App, job: dict) -> None:
                 since_check = 0
                 if await app.jobs.is_cancelled(job_id):
                     await _say(app, job, texts.BROADCAST_STOPPED.format(sent=sent, failed=failed))
+                    app.log.post(texts.LOG_BROADCAST_STOPPED.format(sent=sent, failed=failed))
                     return
             try:
                 received = await _send(app, user_id, payload)
             except SourceGoneError:
                 await app.jobs.finish(job_id, FAILED)
                 await _say(app, job, texts.BROADCAST_SOURCE_GONE.format(sent=sent))
+                app.log.post(texts.LOG_BROADCAST_STOPPED.format(sent=sent, failed=failed))
                 return
             sent, failed = (sent + 1, failed) if received else (sent, failed + 1)
             cursor = user_id
@@ -113,6 +115,8 @@ async def run(app: App, job: dict) -> None:
 
     if await app.jobs.is_cancelled(job_id):
         await _say(app, job, texts.BROADCAST_STOPPED.format(sent=sent, failed=failed))
+        app.log.post(texts.LOG_BROADCAST_STOPPED.format(sent=sent, failed=failed))
         return
     await app.jobs.finish(job_id, DONE)
     await _say(app, job, texts.BROADCAST_DONE.format(sent=sent, failed=failed))
+    app.log.post(texts.LOG_BROADCAST_DONE.format(sent=sent, failed=failed))

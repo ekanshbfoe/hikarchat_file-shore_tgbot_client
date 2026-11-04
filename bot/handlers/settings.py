@@ -16,6 +16,7 @@ from bot.db.roles import AddResult
 from bot.filters import IsInput, IsOwner
 from bot.menus import clear_menu
 from bot.services import backup
+from bot.services.activity_log import actor
 from bot.services.shortener import clean_site, is_link, shorten
 from bot.states import SettingsFlow
 
@@ -77,6 +78,8 @@ async def home(callback: CallbackQuery, state: FSMContext, app: App) -> None:
 async def toggle_protect(callback: CallbackQuery, app: App) -> None:
     now_on = not await app.settings.get("protect_content", False)
     await app.settings.set("protect_content", now_on)
+    template = texts.LOG_SETTING_PROTECT_ON if now_on else texts.LOG_SETTING_PROTECT_OFF
+    app.log.post(template.format(actor=actor(callback.from_user)))
     await callback.answer(texts.PROTECT_ON if now_on else texts.PROTECT_OFF)
     await _show(callback, texts.SETTINGS_TITLE, await _home(app))
 
@@ -115,6 +118,7 @@ async def caption_save(message: Message, state: FSMContext, app: App) -> None:
         await message.answer(texts.CAPTION_TOO_LONG)
         return
     await app.settings.set("custom_caption", caption)
+    app.log.post(texts.LOG_SETTING_CAPTION.format(actor=actor(message.from_user)))
     await state.clear()
     text, markup = await _caption_view(app)
     await message.answer(texts.CAPTION_SAVED)
@@ -124,6 +128,7 @@ async def caption_save(message: Message, state: FSMContext, app: App) -> None:
 @router.callback_query(F.data == "set:caption:rm", IsOwner())
 async def caption_remove(callback: CallbackQuery, app: App) -> None:
     await app.settings.set("custom_caption", "")
+    app.log.post(texts.LOG_SETTING_CAPTION_OFF.format(actor=actor(callback.from_user)))
     await callback.answer(texts.CAPTION_REMOVED)
     await _show(callback, *await _caption_view(app))
 
@@ -162,6 +167,7 @@ async def button_save(message: Message, state: FSMContext, app: App) -> None:
         await message.answer(texts.BUTTON_INVALID)
         return
     await app.settings.set("custom_button", {"text": match.group(1), "url": match.group(2)})
+    app.log.post(texts.LOG_SETTING_BUTTON.format(actor=actor(message.from_user)))
     await state.clear()
     text, markup = await _button_view(app)
     await message.answer(texts.BUTTON_SAVED)
@@ -171,6 +177,7 @@ async def button_save(message: Message, state: FSMContext, app: App) -> None:
 @router.callback_query(F.data == "set:button:rm", IsOwner())
 async def button_remove(callback: CallbackQuery, app: App) -> None:
     await app.settings.set("custom_button", {})
+    app.log.post(texts.LOG_SETTING_BUTTON_OFF.format(actor=actor(callback.from_user)))
     await callback.answer(texts.BUTTON_REMOVED)
     await _show(callback, *await _button_view(app))
 
@@ -234,6 +241,12 @@ async def short_key(message: Message, state: FSMContext, app: App) -> None:
         )
         return
     await app.settings.set("shortener", {"site": data["site"], "key": key, "enabled": True})
+    # The site only. The key is a secret and never goes in the group.
+    app.log.post(
+        texts.LOG_SETTING_SHORTENER.format(
+            actor=actor(message.from_user), site=texts.esc(data["site"])
+        )
+    )
     await state.clear()
     await progress.edit_text(texts.SHORTENER_SAVED)
 
@@ -243,6 +256,12 @@ async def short_toggle(callback: CallbackQuery, app: App) -> None:
     config = await app.settings.get("shortener")
     if config:
         await app.settings.set("shortener", {**config, "enabled": not config.get("enabled")})
+        template = (
+            texts.LOG_SETTING_SHORTENER_OFF
+            if config.get("enabled")
+            else texts.LOG_SETTING_SHORTENER_ON
+        )
+        app.log.post(template.format(actor=actor(callback.from_user)))
     await _show(callback, *await _short_view(app))
     await callback.answer()
 
@@ -250,6 +269,7 @@ async def short_toggle(callback: CallbackQuery, app: App) -> None:
 @router.callback_query(F.data == "set:short:rm", IsOwner())
 async def short_remove(callback: CallbackQuery, app: App) -> None:
     await app.settings.set("shortener", {})
+    app.log.post(texts.LOG_SETTING_SHORTENER_REMOVED.format(actor=actor(callback.from_user)))
     await callback.answer(texts.SHORTENER_REMOVED)
     await _show(callback, *await _short_view(app))
 
@@ -289,6 +309,7 @@ async def update_save(message: Message, state: FSMContext, app: App) -> None:
         await message.answer(texts.SHORTENER_BAD_LINK)
         return
     await app.settings.set("update_channel", text)
+    app.log.post(texts.LOG_SETTING_UPDATE_CHANNEL.format(actor=actor(message.from_user)))
     await state.clear()
     await message.answer(texts.UPDATE_CHANNEL_SAVED)
 
@@ -296,6 +317,7 @@ async def update_save(message: Message, state: FSMContext, app: App) -> None:
 @router.callback_query(F.data == "set:update:rm", IsOwner())
 async def update_remove(callback: CallbackQuery, app: App) -> None:
     await app.settings.set("update_channel", "")
+    app.log.post(texts.LOG_SETTING_UPDATE_CHANNEL_OFF.format(actor=actor(callback.from_user)))
     await callback.answer(texts.UPDATE_CHANNEL_REMOVED)
     await _show(callback, *await _update_view(app))
 
@@ -373,6 +395,9 @@ async def mods_save(message: Message, state: FSMContext, app: App) -> None:
     match result:
         case AddResult.ADDED:
             name = texts.esc("@" + username.lstrip("@"))
+            app.log.post(
+                texts.LOG_MODERATOR_ADDED.format(actor=actor(message.from_user), name=name)
+            )
             await message.answer(texts.MODERATOR_ADDED.format(name=name))
         case AddResult.ALREADY:
             await message.answer(texts.MODERATOR_ALREADY)
@@ -385,6 +410,8 @@ async def mods_save(message: Message, state: FSMContext, app: App) -> None:
 @router.callback_query(F.data.startswith("set:mods:rm:"), IsOwner())
 async def mods_remove(callback: CallbackQuery, state: FSMContext, app: App) -> None:
     removed, user_id = await app.roles.remove(int(callback.data.rsplit(":", 1)[1]))
+    if removed:
+        app.log.post(texts.LOG_MODERATOR_REMOVED.format(actor=actor(callback.from_user)))
     if removed and user_id:
         # End anything they had open and take the commands out of their menu.
         key = StorageKey(bot_id=callback.bot.id, chat_id=user_id, user_id=user_id)

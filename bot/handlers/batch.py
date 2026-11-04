@@ -9,6 +9,7 @@ from bot import texts
 from bot.app import App
 from bot.filters import IsInput, IsStaff
 from bot.services import batch as batch_service
+from bot.services.activity_log import actor
 from bot.states import Batch
 
 router = Router(name="batch")
@@ -68,6 +69,7 @@ async def last_post(message: Message, state: FSMContext, app: App) -> None:
             "code": code,
             "chat_id": message.chat.id,
             "progress_id": progress.message_id,
+            "actor": actor(message.from_user),
         },
     )
     app.runner.start(job_id, batch_service.KIND)

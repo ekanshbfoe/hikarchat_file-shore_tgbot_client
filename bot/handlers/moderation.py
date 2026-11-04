@@ -8,6 +8,7 @@ from bot import texts
 from bot.app import App
 from bot.db.roles import Role
 from bot.filters import IsStaff
+from bot.services.activity_log import actor
 
 router = Router(name="moderation")
 
@@ -45,6 +46,7 @@ async def ban(message: Message, command: CommandObject, app: App, role: Role) ->
         await message.answer(texts.ALREADY_BANNED.format(user_id=user_id))
         return
     await app.users.set_banned(user_id, True)
+    app.log.post(texts.LOG_BANNED.format(actor=actor(message.from_user), user_id=user_id))
     await message.answer(texts.BANNED_OK.format(user_id=user_id))
 
 
@@ -61,4 +63,5 @@ async def unban(message: Message, command: CommandObject, app: App) -> None:
         await message.answer(texts.NOT_BANNED.format(user_id=user_id))
         return
     await app.users.set_banned(user_id, False)
+    app.log.post(texts.LOG_UNBANNED.format(actor=actor(message.from_user), user_id=user_id))
     await message.answer(texts.UNBANNED_OK.format(user_id=user_id))
