@@ -94,7 +94,10 @@ async def test_connect_retries_then_succeeds(db, monkeypatch):
                 return Failing()
             return real_connect()
 
-    monkeypatch.setattr(db, "engine", type("E", (), {"connect": Flaky().connect}))
+    real_engine = db.engine
+    monkeypatch.setattr(
+        db, "engine", type("E", (), {"connect": Flaky().connect, "dispose": real_engine.dispose})
+    )
     async with db.write() as conn:
         assert (await conn.execute(text("select 1"))).scalar() == 1
     assert attempts == 3

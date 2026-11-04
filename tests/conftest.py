@@ -61,6 +61,13 @@ class World:
         return Chatter(self.dispatcher, self.app.bot, user_id, username)
 
 
+@pytest.fixture(autouse=True)
+def _no_pacing(monkeypatch):
+    from bot.services import delivery
+
+    monkeypatch.setattr(delivery, "PACE_SECONDS", 0)
+
+
 @pytest.fixture
 async def world(db, tmp_path):
     from bot.app import App
@@ -79,7 +86,10 @@ async def world(db, tmp_path):
     )
     cache = await open_cache(tmp_path / "world.sqlite3")
     session = FakeSession()
-    app = App(config=config, bot=make_bot(session), store=Store(db, cache))
+    bot = make_bot(session)
+    await bot.me()
+    session.clear()
+    app = App(config=config, bot=bot, store=Store(db, cache))
     dispatcher = build_dispatcher(app)
     yield World(app, dispatcher, session)
     # Routers are module level and may only have one parent.

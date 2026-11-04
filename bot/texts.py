@@ -5,6 +5,7 @@ technical concepts; tests/test_texts.py enforces it. Names coming from users mus
 through esc() because messages are sent as HTML.
 """
 
+from html import escape as esc  # noqa: F401 - used by handlers as texts.esc
 
 # --- General ---
 SOMETHING_WRONG = "Sorry, that didn't work this time. Please try again in a moment."

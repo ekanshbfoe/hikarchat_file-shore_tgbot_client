@@ -8,7 +8,7 @@ from aiogram.fsm.storage.memory import SimpleEventIsolation
 from bot.app import App
 from bot.db.fsm_storage import PostgresStorage
 from bot.errors import on_error
-from bot.handlers import fallback, moderation
+from bot.handlers import fallback, links, moderation, start
 from bot.middlewares import IdentityMiddleware
 
 
@@ -26,6 +26,8 @@ def build_dispatcher(app: App, events_isolation: BaseEventIsolation | None = Non
     dispatcher.callback_query.outer_middleware(identity)
     dispatcher.errors.register(on_error)
 
+    dispatcher.include_router(start.router)
     dispatcher.include_router(moderation.router)
+    dispatcher.include_router(links.router)
     dispatcher.include_router(fallback.router)
     return dispatcher

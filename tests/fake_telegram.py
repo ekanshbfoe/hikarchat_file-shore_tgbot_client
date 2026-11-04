@@ -42,6 +42,7 @@ from aiogram.types import (
     File,
     Message,
     MessageId,
+    TelegramObject,
     Update,
     User,
     WebhookInfo,
@@ -74,8 +75,15 @@ class FakeSession(BaseSession):
             result = self.overrides[kind]
             if isinstance(result, Exception):
                 raise result
-            return result(method) if callable(result) else result
-        return self._default(method)
+            return self._mount(result(method) if callable(result) else result, bot)
+        return self._mount(self._default(method), bot)
+
+    @staticmethod
+    def _mount(result: Any, bot: Bot) -> Any:
+        # Real responses come back attached to the bot, so message.edit_text() works.
+        if isinstance(result, TelegramObject):
+            result.as_(bot)
+        return result
 
     def _message(self, chat_id: int, text: str | None = None) -> Message:
         return Message(
@@ -160,6 +168,9 @@ class FakeSession(BaseSession):
             if isinstance(call, (SendMessage, EditMessageText)) and call.chat_id == chat_id:
                 return call.reply_markup
         raise AssertionError(f"nothing sent to {chat_id}")
+
+    def of_edit_text(self, index: int) -> str:
+        return self.of(EditMessageText)[index].text
 
     def clear(self) -> None:
         self.calls.clear()
