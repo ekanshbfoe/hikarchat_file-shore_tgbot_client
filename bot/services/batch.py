@@ -65,12 +65,9 @@ async def _say(app: App, job: dict, text: str) -> None:
         await app.bot.edit_message_text(
             text=text, chat_id=payload["chat_id"], message_id=payload["progress_id"]
         )
-    except TelegramBadRequest:
-        # The progress message was deleted, or already says this.
-        if text != texts.BATCH_PROGRESS:
-            log.debug("Could not update batch progress")
-    except TelegramForbiddenError:
-        log.info("Batch owner unreachable")
+    except (TelegramBadRequest, TelegramForbiddenError):
+        # The progress message was deleted, or the person blocked the bot. Carry on.
+        log.debug("Could not update batch progress")
 
 
 async def run(app: App, job: dict) -> None:

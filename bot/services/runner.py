@@ -3,11 +3,27 @@
 import asyncio
 import logging
 
+from aiogram.exceptions import (
+    TelegramNetworkError,
+    TelegramRetryAfter,
+    TelegramServerError,
+)
+
+from bot import texts
 from bot.app import App
 from bot.db.engine import is_transient
 
 log = logging.getLogger(__name__)
 RETRY_SECONDS = 30
+
+
+def _wait_before_retry(error: Exception) -> float | None:
+    """How long to wait if this trouble is temporary, otherwise None."""
+    if isinstance(error, TelegramRetryAfter):
+        return error.retry_after + 1
+    if isinstance(error, (TelegramNetworkError, TelegramServerError)) or is_transient(error):
+        return RETRY_SECONDS
+    return None
 
 
 class JobRunner:
@@ -37,14 +53,23 @@ class JobRunner:
                     raise
                 except Exception as error:
                     # A brief outage shouldn't end a broadcast half way. Try again.
-                    level = logging.WARNING if is_transient(error) else logging.ERROR
-                    log.log(level, "Job %s interrupted", job_id, exc_info=error)
-                    if not is_transient(error):
-                        await self.app.jobs.finish(job_id, "failed")
+                    wait = _wait_before_retry(error)
+                    if wait is None:
+                        log.error("Job %s failed", job_id, exc_info=error)
+                        await self._give_up(job_id)
                         return
-                    await asyncio.sleep(RETRY_SECONDS)
+                    log.warning("Job %s interrupted, retrying in %ss", job_id, wait)
+                    await asyncio.sleep(wait)
         finally:
             self._tasks.pop(job_id, None)
+
+    async def _give_up(self, job_id: int) -> None:
+        try:
+            job = await self.app.jobs.get(job_id)
+            await self.app.jobs.finish(job_id, "failed")
+            await self.app.bot.send_message(job["payload"]["chat_id"], texts.SOMETHING_WRONG)
+        except Exception:
+            log.exception("Could not report job %s", job_id)
 
     async def resume_all(self) -> None:
         for job in await self.app.jobs.running():

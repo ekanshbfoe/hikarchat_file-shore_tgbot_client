@@ -206,3 +206,40 @@ async def test_database_outage_mid_job_is_retried(world, monkeypatch):
     monkeypatch.setattr(world.app.jobs, "save_progress", flaky)
     await run_batch(world)
     assert "saved" in world.telegram.last_text(OWNER_ID)
+
+
+async def test_long_slowdown_from_telegram_doesnt_end_the_job(world, monkeypatch):
+    from aiogram.exceptions import TelegramRetryAfter
+
+    from bot.services import runner as runner_module
+
+    waits = []
+    real_sleep = runner_module.asyncio.sleep
+
+    async def sleep(seconds):
+        waits.append(seconds)
+        await real_sleep(0)
+
+    monkeypatch.setattr(runner_module.asyncio, "sleep", sleep)
+    calls = []
+
+    def copy(method):
+        calls.append(method)
+        if len(calls) == 1:
+            raise TelegramRetryAfter(method, "slow", 300)
+        return [MessageId(message_id=1)]
+
+    world.telegram.set(CopyMessages, copy)
+    await run_batch(world, first=1, last=1)
+    assert 301 in waits
+    assert "1 saved" in world.telegram.last_text(OWNER_ID)
+
+
+async def test_unexpected_job_failure_tells_the_person_calmly(world, monkeypatch):
+    async def explode(*args):
+        raise RuntimeError("bug with secret detail")
+
+    monkeypatch.setattr(world.app.jobs, "save_progress", explode)
+    await run_batch(world)
+    assert world.telegram.last_text(OWNER_ID) == texts.SOMETHING_WRONG
+    assert await world.app.jobs.running() == []
