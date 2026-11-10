@@ -68,7 +68,7 @@ NOT_BANNED = "<code>{user_id}</code> isn't banned."
 CMD_START = "Check i am alive"
 CMD_GENLINK = "To store single or multiple random messages"
 CMD_UNIVERSAL = "Stores multiple messages in one link"
-CMD_BATCH = "To store multiple messages from a channel"
+CMD_BATCH = "Copy many posts from a channel into one link"
 CMD_SPECIAL = "Store multiple messages and get an editable link (moderators)"
 CMD_SHORTENER = "To shorten any shareable links"
 CMD_SETTINGS = "Customize your settings as your need"
@@ -109,26 +109,61 @@ DELIVERY_TAIL_BUTTON = "Here you go."
 
 # --- Batch ---
 BATCH_FIRST = (
-    "Forward me the <b>first</b> post from your channel, or send its link.\n"
-    "I need to be an admin in that channel."
+    "📦 <b>Save posts from your channel</b>\n\n"
+    "I'll copy a range of posts from your channel into one shareable link.\n\n"
+    "<b>Step 1 of 2:</b> Forward me the <b>first</b> post of the range.\n\n"
+    "💡 You can also send the post's link, like:\n"
+    "<code>https://t.me/yourchannel/12</code>\n\n"
+    "⚠️ I need to be an admin in that channel to see its posts."
 )
-BATCH_LAST = "Now forward me the <b>last</b> post, or send its link."
+BATCH_LAST = (
+    "✅ Got it!\n\n"
+    "<b>Step 2 of 2:</b> Now forward me the <b>last</b> post of the range.\n\n"
+    "I'll save everything between the first and the last post, including both."
+)
 BATCH_NOT_A_POST = (
-    "That doesn't look like a channel post. Forward one from the channel or send its link."
+    "🤔 That doesn't look like a post from a channel.\n\n"
+    "Please forward a post from your channel, or send its link, like:\n"
+    "<code>https://t.me/yourchannel/12</code>"
 )
 BATCH_DIFFERENT_CHANNEL = (
-    "Both posts must come from the same channel. Please send the last post again."
+    "⚠️ Those two posts are from different channels.\n\n"
+    "Both need to be from the same channel. Please forward the <b>last</b> post again."
 )
-BATCH_NOT_ADMIN = "I need to be an admin in that channel. Please add me and try /batch again."
+BATCH_NOT_ADMIN = (
+    "🔑 I'm not an admin in that channel yet.\n\n"
+    "Please do this:\n"
+    "1. Add me as an admin to the channel\n"
+    "2. Send /batch again"
+)
 BATCH_PROTECTED = (
-    "That channel doesn't allow its content to be copied. "
-    'Turn off "Restrict saving content" in its settings and try /batch again.'
+    "🔒 That channel doesn't allow its posts to be copied.\n\n"
+    "To fix it: open the channel's settings and turn off "
+    '<b>"Restrict saving content"</b>, then send /batch again.'
 )
-BATCH_TOO_MANY = "That's {count} posts, and the most I can store at once is {limit}. Please choose a smaller range."
-BATCH_PROGRESS = "Saving posts… {done} of {total}"
-BATCH_DONE = "<b>Your link is ready</b> ({count} saved)\n\n{link}"
-BATCH_EMPTY = "I couldn't find any posts to save in that range."
-BATCH_FAILED = "I couldn't finish saving those posts. Please check I'm still an admin there and try /batch again."
+BATCH_TOO_MANY = (
+    "😅 That's a lot — <b>{count} posts</b> in one go!\n\n"
+    "The most I can save at once is <b>{limit}</b>. "
+    "Please pick a smaller range: forward two posts that are closer together."
+)
+BATCH_PROGRESS = (
+    "⏳ Saving posts… {done} of {total}\n\n"
+    "Hang on — I'll show you the link here when it's ready."
+)
+BATCH_DONE = (
+    "✅ Done! {count} posts saved.\n\n"
+    "<b>Here Is Your Link:</b>\n\n\n"
+    "{link}"
+)
+BATCH_EMPTY = (
+    "😕 I couldn't find any posts between those two.\n\n"
+    "Please check the posts you sent and try /batch again."
+)
+BATCH_FAILED = (
+    "😔 I couldn't finish saving those posts.\n\n"
+    "This usually happens when I'm no longer an admin in the channel. "
+    "Please check and send /batch again."
+)
 
 # --- Special links ---
 SPECIAL_MENU = "<b>Editable links</b>\n\nCreate a new one, or choose one to change. The link itself never changes."

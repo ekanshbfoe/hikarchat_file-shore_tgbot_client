@@ -45,7 +45,7 @@ async def run_batch(world, first=1, last=3):
 async def test_forwarded_posts_make_a_link(world):
     await run_batch(world)
     final = world.telegram.last_text(OWNER_ID)
-    assert "3 saved" in final
+    assert "3 posts saved" in final
     code = final.rsplit("start=", 1)[1]
     link = await world.app.links.get(code)
     assert len(link["items"]) == 3 and link["kind"] == "batch"
@@ -86,14 +86,14 @@ async def test_public_channel_link(world):
 async def test_large_range_is_split_into_hundreds(world):
     await run_batch(world, first=1, last=250)
     assert [len(c.message_ids) for c in world.telegram.of(CopyMessages)] == [100, 100, 50]
-    assert "250 saved" in world.telegram.last_text(OWNER_ID)
+    assert "250 posts saved" in world.telegram.last_text(OWNER_ID)
 
 
 async def test_gaps_are_skipped(world):
     allow_channel(world)
     world.telegram.set(CopyMessages, lambda m: [MessageId(message_id=1)])
     await run_batch(world, first=1, last=3)
-    assert "1 saved" in world.telegram.last_text(OWNER_ID)
+    assert "1 posts saved" in world.telegram.last_text(OWNER_ID)
 
 
 async def test_empty_range_removes_the_link(world):
@@ -121,7 +121,7 @@ async def test_too_many_is_explained(world):
     await world.owner.send("/batch")
     await world.owner.send(forward_origin=origin(1), text="p")
     await world.owner.send(forward_origin=origin(batch_service.MAX_POSTS + 5), text="p")
-    assert "the most I can store" in world.telegram.last_text(OWNER_ID)
+    assert "most I can save" in world.telegram.last_text(OWNER_ID)
     assert not world.telegram.of(CopyMessages)
 
 
@@ -187,7 +187,7 @@ async def test_restart_resumes_where_it_left_off(world):
     await world.app.runner.resume_all()
     await world.app.runner.wait()
     assert world.telegram.of(CopyMessages)[0].message_ids[0] == 101
-    assert "250 saved" in world.telegram.last_text(OWNER_ID)
+    assert "250 posts saved" in world.telegram.last_text(OWNER_ID)
     assert (await world.app.jobs.get(job_id))["status"] == "done"
 
 
@@ -232,7 +232,7 @@ async def test_long_slowdown_from_telegram_doesnt_end_the_job(world, monkeypatch
     world.telegram.set(CopyMessages, copy)
     await run_batch(world, first=1, last=1)
     assert 301 in waits
-    assert "1 saved" in world.telegram.last_text(OWNER_ID)
+    assert "1 posts saved" in world.telegram.last_text(OWNER_ID)
 
 
 async def test_unexpected_job_failure_tells_the_person_calmly(world, monkeypatch):
