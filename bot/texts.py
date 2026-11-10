@@ -82,6 +82,11 @@ COLLECT_PROMPT = (
     "Send me the messages or files you want to store, then tap <b>Done</b>.\n"
     "You can send as many as you like."
 )
+COLLECT_REPLIED = (
+    "<b>Stored Messages: {count}</b>\n\n"
+    "Want to add more messages? Just send them here!\n\n"
+    "✨ You can now send multiple messages at once."
+)
 COLLECT_COUNT = "Added. {count} ready so far. Tap <b>Done</b> when you've finished."
 COLLECT_EMPTY = "You haven't sent anything yet. Send a message or file first."
 COLLECT_UNSUPPORTED = "This type of message can't be stored. Please send something else."

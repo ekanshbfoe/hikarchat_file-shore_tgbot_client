@@ -75,6 +75,36 @@ async def test_universal_link_works_like_genlink(world):
     assert (await world.app.links.get(code))["kind"] == "universal"
 
 
+async def test_replying_to_a_file_starts_the_collection_with_it(world):
+    source = await world.owner.send(document=doc("reply.xml"))
+    await world.owner.send("/genlink", reply_to_message=source)
+    assert "Stored Messages: 1" in world.telegram.last_text(OWNER_ID)
+    await world.owner.tap("collect:done")
+    copied = world.telegram.of(CopyMessages)[0]
+    assert copied.message_ids == [source.message_id]
+    code = world.telegram.last_text(OWNER_ID).rsplit("start=", 1)[1]
+    items = (await world.app.links.get(code))["items"]
+    assert len(items) == 1 and items[0]["file_name"] == "reply.xml"
+
+
+async def test_replying_to_text_also_starts_the_collection(world):
+    source = await world.owner.send("worth sharing")
+    await world.owner.send("/genlink", reply_to_message=source)
+    assert "Stored Messages: 1" in world.telegram.last_text(OWNER_ID)
+
+
+async def test_replying_to_an_uncopyable_message_asks_normally(world):
+    from aiogram.types import Invoice
+
+    source = await world.owner.send(
+        invoice=Invoice(
+            title="t", description="d", start_parameter="s", currency="USD", total_amount=1
+        )
+    )
+    await world.owner.send("/genlink", reply_to_message=source)
+    assert world.telegram.last_text(OWNER_ID) == texts.COLLECT_PROMPT
+
+
 async def test_ordinary_user_cannot_create_links(world):
     user = world.person(5)
     await user.send("/genlink")

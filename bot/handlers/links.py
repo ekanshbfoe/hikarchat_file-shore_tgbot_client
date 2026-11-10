@@ -38,8 +38,15 @@ COLLECT_BUTTONS = InlineKeyboardMarkup(
 async def start_collecting(message: Message, state: FSMContext, kind: str, **extra) -> None:
     await state.clear()
     await state.set_state(Collect.messages)
-    await state.update_data(kind=kind, sources=[], **extra)
-    await message.answer(texts.COLLECT_PROMPT, reply_markup=COLLECT_BUTTONS)
+    reply = message.reply_to_message
+    sources = [storing.describe(reply)] if reply and storing.is_copyable(reply) else []
+    await state.update_data(kind=kind, sources=sources, **extra)
+    if sources:
+        await message.answer(
+            texts.COLLECT_REPLIED.format(count=len(sources)), reply_markup=COLLECT_BUTTONS
+        )
+    else:
+        await message.answer(texts.COLLECT_PROMPT, reply_markup=COLLECT_BUTTONS)
 
 
 @router.message(Command("genlink"), IsStaff())
