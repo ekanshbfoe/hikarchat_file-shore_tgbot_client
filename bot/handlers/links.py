@@ -152,4 +152,7 @@ async def done(callback: CallbackQuery, state: FSMContext, app: App) -> None:
             link=await share.plain_link(app, code),
         )
     )
-    await progress.edit_text(texts.LINK_READY.format(link=await share.share_link(app, code)))
+    link = await share.share_link(app, code)
+    await progress.edit_text(
+        texts.LINK_READY.format(link=link), reply_markup=share.share_markup(link)
+    )

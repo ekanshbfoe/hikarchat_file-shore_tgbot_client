@@ -1,5 +1,10 @@
 """Builds the links people share."""
 
+from urllib.parse import quote
+
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+
+from bot import texts
 from bot.app import App
 from bot.services.shortener import shorten
 
@@ -8,6 +13,19 @@ SHORT_LINK_TTL = 30 * 24 * 3600.0
 
 async def plain_link(app: App, code: str) -> str:
     return f"https://t.me/{await app.bot_username()}?start={code}"
+
+
+def share_markup(link: str) -> InlineKeyboardMarkup:
+    """One button that opens Telegram's forward dialog with this link filled in."""
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text=texts.BTN_SHARE_LINK, url=f"https://t.me/share/url?url={quote(link)}"
+                )
+            ]
+        ]
+    )
 
 
 async def share_link(app: App, code: str) -> str:

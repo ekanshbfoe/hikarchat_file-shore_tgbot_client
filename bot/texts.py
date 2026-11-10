@@ -93,7 +93,8 @@ COLLECT_UNSUPPORTED = "This type of message can't be stored. Please send somethi
 COLLECT_COMMAND_HINT = "Tap <b>Done</b> to finish, or /cancel to stop."
 COLLECT_LIMIT = "That's the most one link can hold. Tap <b>Done</b> to create it."
 STORING = "Saving your files…"
-LINK_READY = "<b>Your link is ready</b>\n\n{link}"
+LINK_READY = "<b>Here Is Your Link:</b>\n\n\n{link}"
+BTN_SHARE_LINK = "Share Link"
 STORAGE_BLOCKED = (
     "I can't save to your backup channel. "
     "Please make me an admin there with permission to post, then try again."

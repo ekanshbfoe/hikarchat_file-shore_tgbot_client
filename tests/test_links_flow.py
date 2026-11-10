@@ -105,6 +105,20 @@ async def test_replying_to_an_uncopyable_message_asks_normally(world):
     assert world.telegram.last_text(OWNER_ID) == texts.COLLECT_PROMPT
 
 
+async def test_finished_link_says_here_is_your_link_with_a_share_button(world):
+    from tests.fake_telegram import button_urls
+
+    await world.owner.send("/genlink")
+    await world.owner.send("text")
+    world.telegram.clear()
+    await world.owner.tap("collect:done")
+    final = world.telegram.last_text(OWNER_ID)
+    assert "Here Is Your Link:" in final
+    assert "start=" in final
+    urls = button_urls(world.telegram.last_markup(OWNER_ID))
+    assert len(urls) == 1 and urls[0].startswith("https://t.me/share/url?url=")
+
+
 async def test_ordinary_user_cannot_create_links(world):
     user = world.person(5)
     await user.send("/genlink")
