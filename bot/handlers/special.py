@@ -34,13 +34,15 @@ async def _menu(app: App) -> tuple[str, InlineKeyboardMarkup]:
 
 async def _link_view(app: App, link: dict) -> tuple[str, InlineKeyboardMarkup]:
     code = link["code"]
+    link_url = await share.share_link(app, code)
     text = texts.SPECIAL_VIEW.format(
         title=texts.esc(link["title"] or texts.SPECIAL_UNTITLED),
         count=len(link["items"]),
-        link=await share.share_link(app, code),
+        link=link_url,
     )
     markup = InlineKeyboardMarkup(
         inline_keyboard=[
+            [share.share_button(link_url)],
             [_button(texts.SPECIAL_ADD, f"sp:add:{code}")],
             [_button(texts.SPECIAL_ITEMS, f"sp:items:{code}")],
             [_button(texts.SPECIAL_DELETE, f"sp:del:{code}")],

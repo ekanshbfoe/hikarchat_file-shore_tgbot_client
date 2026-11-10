@@ -59,11 +59,14 @@ async def check_source(app: App, channel_id: int) -> str | None:
     return None
 
 
-async def _say(app: App, job: dict, text: str) -> None:
+async def _say(app: App, job: dict, text: str, markup=None) -> None:
     payload = job["payload"]
     try:
         await app.bot.edit_message_text(
-            text=text, chat_id=payload["chat_id"], message_id=payload["progress_id"]
+            text=text,
+            chat_id=payload["chat_id"],
+            message_id=payload["progress_id"],
+            reply_markup=markup,
         )
     except (TelegramBadRequest, TelegramForbiddenError):
         # The progress message was deleted, or the person blocked the bot. Carry on.
@@ -122,6 +125,10 @@ async def run(app: App, job: dict) -> None:
             link=await share.plain_link(app, code),
         )
     )
+    link = await share.share_link(app, code)
     await _say(
-        app, job, texts.BATCH_DONE.format(count=stored, link=await share.share_link(app, code))
+        app,
+        job,
+        texts.BATCH_DONE.format(count=stored, link=link),
+        markup=share.share_markup(link),
     )

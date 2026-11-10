@@ -2,7 +2,7 @@ from aiogram.methods import AnswerCallbackQuery, CopyMessages
 
 from bot import texts
 from bot.db.links import Item
-from tests.fake_telegram import button_data
+from tests.fake_telegram import button_data, button_urls
 from tests.helpers import OWNER_ID
 
 BACKUP = -100500
@@ -52,6 +52,23 @@ async def test_add_keeps_the_same_link(world):
     await world.owner.tap("collect:done")
     assert len(await ids_of(world, code)) == 2
     assert code in world.telegram.last_text(OWNER_ID)
+
+
+async def test_opening_a_link_offers_the_share_button(world):
+    code = await make(world, 1)
+    await world.owner.tap(f"sp:open:{code}")
+    urls = button_urls(world.telegram.last_markup(OWNER_ID))
+    assert urls and all(url.startswith("https://t.me/share/url?url=") for url in urls)
+
+
+async def test_adding_messages_shows_the_share_button(world):
+    code = await make(world, 1)
+    await world.owner.tap(f"sp:add:{code}")
+    await world.owner.send("more")
+    world.telegram.clear()
+    await world.owner.tap("collect:done")
+    urls = button_urls(world.telegram.last_markup(OWNER_ID))
+    assert len(urls) == 1 and urls[0].startswith("https://t.me/share/url?url=")
 
 
 async def test_edit_is_visible_to_people_at_once(world):

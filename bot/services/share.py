@@ -15,17 +15,21 @@ async def plain_link(app: App, code: str) -> str:
     return f"https://t.me/{await app.bot_username()}?start={code}"
 
 
-def share_markup(link: str) -> InlineKeyboardMarkup:
+def share_button(link: str) -> InlineKeyboardButton:
     """One button that opens Telegram's forward dialog with this link filled in."""
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text=texts.BTN_SHARE_LINK, url=f"https://t.me/share/url?url={quote(link)}"
-                )
-            ]
-        ]
+    return InlineKeyboardButton(
+        text=texts.BTN_SHARE_LINK, url=f"https://t.me/share/url?url={quote(link)}"
     )
+
+
+def share_markup(link: str) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[[share_button(link)]])
+
+
+async def present_link(app: App, code: str) -> tuple[str, InlineKeyboardMarkup]:
+    """The one way every finished link is shown: heading, link, share button."""
+    link = await share_link(app, code)
+    return texts.LINK_READY.format(link=link), share_markup(link)
 
 
 async def share_link(app: App, code: str) -> str:

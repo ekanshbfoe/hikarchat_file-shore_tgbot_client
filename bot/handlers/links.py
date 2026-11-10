@@ -138,9 +138,8 @@ async def done(callback: CallbackQuery, state: FSMContext, app: App) -> None:
                 actor=actor(callback.from_user), link=await share.plain_link(app, link["code"])
             )
         )
-        await progress.edit_text(
-            texts.SPECIAL_UPDATED + "\n\n" + await share.share_link(app, link["code"])
-        )
+        text, markup = await share.present_link(app, link["code"])
+        await progress.edit_text(texts.SPECIAL_UPDATED + "\n\n" + text, reply_markup=markup)
         return
 
     title = data.get("title") if data["kind"] == SPECIAL else None
@@ -152,7 +151,5 @@ async def done(callback: CallbackQuery, state: FSMContext, app: App) -> None:
             link=await share.plain_link(app, code),
         )
     )
-    link = await share.share_link(app, code)
-    await progress.edit_text(
-        texts.LINK_READY.format(link=link), reply_markup=share.share_markup(link)
-    )
+    text, markup = await share.present_link(app, code)
+    await progress.edit_text(text, reply_markup=markup)

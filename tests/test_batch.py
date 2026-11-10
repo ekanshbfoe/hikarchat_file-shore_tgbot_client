@@ -12,7 +12,7 @@ from aiogram.types import (
 
 from bot import texts
 from bot.services import batch as batch_service
-from tests.fake_telegram import BOT_ID, bot_admin
+from tests.fake_telegram import BOT_ID, bot_admin, button_urls
 from tests.helpers import OWNER_ID
 
 CHANNEL = -100123
@@ -46,6 +46,9 @@ async def test_forwarded_posts_make_a_link(world):
     await run_batch(world)
     final = world.telegram.last_text(OWNER_ID)
     assert "3 posts saved" in final
+    assert "Here Is Your Link:" in final
+    urls = button_urls(world.telegram.last_markup(OWNER_ID))
+    assert len(urls) == 1 and urls[0].startswith("https://t.me/share/url?url=")
     code = final.rsplit("start=", 1)[1]
     link = await world.app.links.get(code)
     assert len(link["items"]) == 3 and link["kind"] == "batch"
