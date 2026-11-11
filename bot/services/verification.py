@@ -132,23 +132,25 @@ def choose_target(text: str, pending: list[dict]) -> dict:
     return pending[0]
 
 
-async def _read(prepared: bytes, pending: list[dict]) -> Check:
-    text = await ocr.read_text(prepared, ocr.ENGLISH)
-    target = choose_target(text, pending)
-    verdict = judge(text, target)
-    if verdict == Verdict.UNCLEAR:
-        # Most likely an interface in another language. Only now spend time on Hindi.
-        text = await ocr.read_text(prepared, ocr.HINDI)
-        target = choose_target(text, pending)
-        verdict = judge(text, target)
-    return Check(target=target, verdict=verdict)
+async def _read(main: bytes, other: bytes, pending: list[dict]) -> Check:
+    """Read in English, then Hindi, trying both polarities. Text is merged, so the page
+    can come from one polarity and the button from the other."""
+    text = ""
+    for language in (ocr.ENGLISH, ocr.HINDI):
+        for image in (main, other):
+            text += "\n" + await ocr.read_text(image, language)
+            target = choose_target(text, pending)
+            verdict = judge(text, target)
+            if verdict != Verdict.UNCLEAR:
+                return Check(target=target, verdict=verdict)
+    return Check(target=pending[0], verdict=Verdict.UNCLEAR)
 
 
 async def check_screenshot(data: bytes, pending: list[dict]) -> Check:
     """Never raises for anything on our side: if the check itself can't run, the person
     passes rather than being blocked by our fault."""
     try:
-        prepared = await asyncio.to_thread(ocr.prepare_image, data)
+        main, other = await asyncio.to_thread(ocr.prepare_image, data)
     except ocr.NotAnImageError:
         return Check(target=pending[0], verdict=Verdict.UNCLEAR)
     except Exception:
@@ -156,7 +158,7 @@ async def check_screenshot(data: bytes, pending: list[dict]) -> Check:
         return Check(target=pending[0], verdict=Verdict.PASS)
     try:
         async with asyncio.timeout(TIME_LIMIT_SECONDS):
-            return await _read(prepared, pending)
+            return await _read(main, other, pending)
     except TimeoutError:
         log.warning("Screenshot check hit the time limit; letting the person through")
     except Exception:

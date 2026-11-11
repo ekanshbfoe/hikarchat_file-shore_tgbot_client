@@ -2,6 +2,7 @@
 samples. They're approximations of the apps' layouts, not the real thing."""
 
 import io
+import os
 
 from PIL import Image, ImageDraw, ImageFont
 
@@ -10,7 +11,12 @@ BOLD_PATH = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 
 
 def _font(size, bold=False):
-    return ImageFont.truetype(BOLD_PATH if bold else FONT_PATH, size)
+    path = BOLD_PATH if bold else FONT_PATH
+    if not os.path.exists(path):
+        # Windows has no DejaVu; Arial serves the same purpose.
+        fonts = os.path.join(os.environ.get("WINDIR", r"C:\Windows"), "Fonts")
+        path = os.path.join(fonts, "arialbd.ttf" if bold else "arial.ttf")
+    return ImageFont.truetype(path, size)
 
 
 def _screen(lines, dark=False, size=(1080, 2200), clock=True) -> bytes:

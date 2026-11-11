@@ -106,7 +106,8 @@ async def test_hindi_only_runs_when_english_finds_nothing(monkeypatch):
     assert languages == [ocr.ENGLISH]
     languages.clear()
     await check_screenshot(screenshots.unrelated(), [YT])
-    assert languages == [ocr.ENGLISH, ocr.HINDI]
+    # Both polarities in English, then both in Hindi.
+    assert languages == [ocr.ENGLISH, ocr.ENGLISH, ocr.HINDI, ocr.HINDI]
 
 
 # --- Decision rules on text, including misreads ---

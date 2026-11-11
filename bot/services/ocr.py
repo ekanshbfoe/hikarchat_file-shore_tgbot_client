@@ -22,8 +22,13 @@ class NotAnImageError(Exception):
     pass
 
 
-def prepare_image(data: bytes) -> bytes:
-    """Shrink, greyscale, and make the text dark on light, which Tesseract reads best."""
+def prepare_image(data: bytes) -> tuple[bytes, bytes]:
+    """Shrink and greyscale, then return both polarities: (dark_on_light, light_on_dark).
+
+    Dark mode screenshots read best flipped, but their bright buttons (YouTube's white
+    Subscribe pill) flip into the one polarity Tesseract cannot read. Handing the judge
+    both readings means the page comes from one and the button from the other.
+    """
     Image.MAX_IMAGE_PIXELS = MAX_PIXELS
     try:
         with Image.open(io.BytesIO(data)) as image:
@@ -33,13 +38,18 @@ def prepare_image(data: bytes) -> bytes:
     if grey.width > TARGET_WIDTH:
         height = round(grey.height * TARGET_WIDTH / grey.width)
         grey = grey.resize((TARGET_WIDTH, height), Image.Resampling.BILINEAR)
-    # Dark mode screenshots: flip them.
+    # Dark mode screenshots: the flipped copy is the main reading.
     histogram = grey.histogram()
     mean = sum(value * count for value, count in enumerate(histogram)) / max(sum(histogram), 1)
+    flipped = ImageOps.invert(grey)
     if mean < 110:
-        grey = ImageOps.invert(grey)
+        return _as_png(flipped), _as_png(grey)
+    return _as_png(grey), _as_png(flipped)
+
+
+def _as_png(image: Image.Image) -> bytes:
     output = io.BytesIO()
-    grey.save(output, format="PNG", compress_level=1)
+    image.save(output, format="PNG", compress_level=1)
     return output.getvalue()
 
 
