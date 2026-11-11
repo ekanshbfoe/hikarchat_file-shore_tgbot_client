@@ -120,9 +120,10 @@ async def test_hindi_only_runs_when_english_finds_nothing(monkeypatch):
         ("Cool Edits 1M subscribers Subscrbed", Verdict.PASS),
         ("Cool Edits 1M subscribers Subscribe", Verdict.NOT_SUBSCRIBED),
         ("1M subscribers Subscribe", Verdict.NOT_SUBSCRIBED),
-        ("Cool Edits 1M subscribers", Verdict.PASS),  # Name readable, button not: forgive.
-        ("Coo1 Ed1ts videos", Verdict.PASS),  # Name misread a little.
-        ("Subscribed", Verdict.PASS),  # Only the button readable: forgive.
+        ("Cool Edits 1M subscribers Subscrlbe", Verdict.NOT_SUBSCRIBED),  # Misread button.
+        ("Cool Edits 1M subscribers", Verdict.UNCLEAR),  # Name readable, button not.
+        ("Coo1 Ed1ts videos", Verdict.UNCLEAR),  # Name misread a little.
+        ("Subscribed", Verdict.PASS),  # Only the button readable: still proof.
         ("sunny and warm", Verdict.UNCLEAR),
         ("", Verdict.UNCLEAR),
         ("Cool Edits सदस्यता ली गई", Verdict.PASS),
@@ -140,8 +141,8 @@ def test_youtube_rules(text, verdict):
         ("@cooledits 12 Following 4 Followers 1 Likes Friends", Verdict.PASS),
         ("@cooledits 12 Following 4 Followers Following", Verdict.PASS),
         ("@cooledits 12 Following 4 Followers 1 Likes Follow", Verdict.NOT_SUBSCRIBED),
-        ("12 Following 4 Followers Follow", Verdict.NOT_SUBSCRIBED),
-        ("@cooledits 12 Following 4 Followers", Verdict.PASS),  # Forgive.
+        ("12 Following 4 Followers Foloow", Verdict.NOT_SUBSCRIBED),  # Misread button.
+        ("@cooledits 12 Following 4 Followers", Verdict.UNCLEAR),  # Button not readable.
         ("12 Following 4 Followers", Verdict.UNCLEAR),
         ("nothing useful", Verdict.UNCLEAR),
         ("Cool Edits फ़ॉलो करें", Verdict.NOT_SUBSCRIBED),

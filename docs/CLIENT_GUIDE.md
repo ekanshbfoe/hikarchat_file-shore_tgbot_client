@@ -42,6 +42,7 @@ Fixing a channel's name, or removing a channel and adding it back later, won't a
 **Good to know**
 - If someone leaves a Telegram channel, the bot notices and asks them to rejoin.
 - For YouTube and TikTok, the bot can't tell if someone unsubscribes later.
+- The screenshot must clearly show the **Subscribed** or **Following** button. A cropped picture that doesn't show the button will be asked for again.
 - A screenshot can't be fully proven real, so a fake could occasionally get through. After 3 tries that don't pass, the bot lets the person through so that real followers never get stuck, and asks you to review them in your logs group.
 
 ## Your logs group

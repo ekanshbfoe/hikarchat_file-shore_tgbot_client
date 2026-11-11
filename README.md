@@ -27,10 +27,12 @@ The client's own guide, with no technical language, is in [docs/CLIENT_GUIDE.md]
 version matches. Replacing a channel or using "Ask everyone again" affects that channel alone.
 Removing and re-adding the same channel keeps earlier verifications.
 
-**Screenshot rules.** A screenshot fails only if it clearly shows a not-subscribed button, or if
-nothing relevant can be read. If the check breaks or times out, the person passes. After
-`SCREENSHOT_MAX_ATTEMPTS` failures (default 3) the person passes anyway so nobody is ever stuck,
-which also means random images can get through. Set it to `0` to keep asking.
+**Screenshot rules.** A screenshot passes only when it clearly shows the subscribed state. It
+fails when it clearly shows a not-subscribed button, or when the button cannot be read — a
+cropped or name-only picture is asked for again. If the check itself breaks or times out, the
+person passes rather than being blocked by our fault. After `SCREENSHOT_MAX_ATTEMPTS` failures
+(default 3) the person passes anyway so nobody is ever stuck, which also means random images can
+eventually get through. Set it to `0` to keep asking.
 
 **Logs group.** With `LOG_CHAT_ID` set, new users and staff actions are posted to that group, and
 anyone let through after repeated failures appears with their last screenshot and Approve / Not

@@ -45,10 +45,20 @@ def _words(text: str) -> list[str]:
     return re.findall(r"[^\W_]+", text.lower())
 
 
-def _has_word_like(words: list[str], wanted: str, exclude: set[str] = frozenset()) -> bool:
-    """Exact or nearly so, allowing for a misread letter or two."""
+def _is_word_like(word: str, wanted: str) -> bool:
+    """Nearly so, allowing for a misread letter or two."""
+    return abs(len(word) - len(wanted)) <= 2 and fuzz.ratio(word, wanted) >= WORD_MATCH
+
+
+def _has_word_like(
+    words: list[str], wanted: str, exclude: set[str] = frozenset(), unless: tuple = ()
+) -> bool:
+    """Exact or nearly so. A word that itself looks like one of `unless` doesn't count:
+    "subscribers" must not be mistaken for "subscribe", and the other way round."""
     return any(
-        word not in exclude and fuzz.ratio(word, wanted) >= WORD_MATCH
+        word not in exclude
+        and _is_word_like(word, wanted)
+        and not any(_is_word_like(word, other) for other in unless)
         for word in words
         if abs(len(word) - len(wanted)) <= 2
     )
@@ -78,21 +88,31 @@ def mentions(text: str, target: dict) -> bool:
     return False
 
 
-def _judge_youtube(text: str, words: list[str], named: bool) -> Verdict:
-    # "subscribe" and "subscribers" are close in spelling but mean something else.
-    subscribed = _has_word_like(words, "subscribed", exclude={"subscribe", "subscribers"}) or any(
-        phrase in text for phrase in _YOUTUBE_SUBSCRIBED_HINDI
-    )
+def _judge_youtube(text: str, words: list[str]) -> Verdict:
+    # "subscribe" and "subscribers" are close in spelling but mean something else, so
+    # each check refuses words that could belong to the other. The not-subscribed
+    # check runs first: a misread asks again rather than passing.
+    not_subscribed = _has_word_like(
+        words, "subscribe", exclude={"subscribed", "subscribers"}
+    ) or any(phrase in text for phrase in _YOUTUBE_SUBSCRIBE_HINDI)
+    if not_subscribed:
+        return Verdict.NOT_SUBSCRIBED
+    subscribed = _has_word_like(
+        words, "subscribed", exclude={"subscribe", "subscribers"}
+    ) or any(phrase in text for phrase in _YOUTUBE_SUBSCRIBED_HINDI)
     if subscribed:
         return Verdict.PASS
-    if "subscribe" in words or any(phrase in text for phrase in _YOUTUBE_SUBSCRIBE_HINDI):
-        return Verdict.NOT_SUBSCRIBED
-    return Verdict.PASS if named else Verdict.UNCLEAR
+    return Verdict.UNCLEAR
 
 
-def _judge_tiktok(text: str, words: list[str], named: bool) -> Verdict:
+def _judge_tiktok(text: str, words: list[str]) -> Verdict:
     # Every profile shows a "Following" count, so one "following" proves nothing.
     following_count = sum(1 for word in words if word == "following")
+    not_following = _has_word_like(
+        words, "follow", exclude={"following", "followers"}
+    ) or any(phrase in text for phrase in _TIKTOK_FOLLOW_HINDI)
+    if not_following:
+        return Verdict.NOT_SUBSCRIBED
     followed = (
         following_count >= 2
         or _has_word_like(words, "message")
@@ -101,18 +121,15 @@ def _judge_tiktok(text: str, words: list[str], named: bool) -> Verdict:
     )
     if followed:
         return Verdict.PASS
-    if "follow" in words or any(phrase in text for phrase in _TIKTOK_FOLLOW_HINDI):
-        return Verdict.NOT_SUBSCRIBED
-    return Verdict.PASS if named else Verdict.UNCLEAR
+    return Verdict.UNCLEAR
 
 
 def judge(text: str, target: dict) -> Verdict:
-    named = mentions(text, target)
     words = _words(text)
     if target["platform"] == YOUTUBE:
-        return _judge_youtube(text, words, named)
+        return _judge_youtube(text, words)
     if target["platform"] == TIKTOK:
-        return _judge_tiktok(text, words, named)
+        return _judge_tiktok(text, words)
     raise ValueError(target["platform"])
 
 
