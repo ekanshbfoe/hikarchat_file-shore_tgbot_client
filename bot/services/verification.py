@@ -138,6 +138,10 @@ def _judge_tiktok(text: str, words: list[str]) -> Verdict:
 
 
 def judge(text: str, target: dict) -> Verdict:
+    """The channel's own page must be visible before any button counts: a Subscribed
+    button on some other channel's page proves nothing about this one."""
+    if not mentions(text, target):
+        return Verdict.UNCLEAR
     words = _words(text)
     if target["platform"] == YOUTUBE:
         return _judge_youtube(text, words)
