@@ -1,5 +1,6 @@
 """Force subscribe: works out what someone still has to do, and shows them."""
 
+import asyncio
 import logging
 
 from aiogram.exceptions import (
@@ -56,13 +57,17 @@ async def pending_targets(app: App, user_id: int) -> tuple[list[dict], int]:
     if not targets:
         return [], 0
     verified = await app.targets.verified_versions(user_id)
-    pending = []
-    for target in targets:
-        if verified.get(str(target["id"])) == target["version"]:
-            continue
-        if target["platform"] == TELEGRAM and await _is_telegram_satisfied(app, user_id, target):
-            continue
-        pending.append(target)
+    unverified = [
+        target for target in targets if verified.get(str(target["id"])) != target["version"]
+    ]
+    telegram = [target for target in unverified if target["platform"] == TELEGRAM]
+    # Telegram answers one chat at a time, so asking in turn makes somebody who must
+    # join three channels wait three times as long as they have to.
+    joined = await asyncio.gather(
+        *(_is_telegram_satisfied(app, user_id, target) for target in telegram)
+    )
+    satisfied = {target["id"] for target, done in zip(telegram, joined, strict=True) if done}
+    pending = [target for target in unverified if target["id"] not in satisfied]
     return pending, len(targets)
 
 
