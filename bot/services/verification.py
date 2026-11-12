@@ -25,7 +25,7 @@ MIN_NAME_LENGTH_FOR_FUZZY = 4
 
 _YOUTUBE_SUBSCRIBED_HINDI = ("सदस्यता ली", "सब्सक्राइब किया", "सब्सक्राइब्ड")
 _YOUTUBE_SUBSCRIBE_HINDI = ("सदस्यता लें", "सदस्यता लेँ", "सब्सक्राइब करें")
-_TIKTOK_FOLLOWED_HINDI = ("फ़ॉलो कर रहे", "फॉलो कर रहे", "मैसेज", "संदेश", "दोस्त")
+_TIKTOK_FOLLOWED_HINDI = ("फ़ॉलो कर रहे", "फॉलो कर रहे")
 _TIKTOK_FOLLOW_HINDI = ("फ़ॉलो करें", "फॉलो करें")
 
 
@@ -118,36 +118,53 @@ def _judge_youtube(text: str, words: list[str]) -> Verdict:
     return Verdict.UNCLEAR
 
 
-def _judge_tiktok(text: str, words: list[str]) -> Verdict:
-    # Every profile shows a "Following" count, so one "following" proves nothing.
-    following_count = sum(1 for word in words if word == "following")
-    not_following = _means_one_of(
-        words, "follow", ("following", "followers")
-    ) or any(phrase in text for phrase in _TIKTOK_FOLLOW_HINDI)
-    if not_following:
-        return Verdict.NOT_SUBSCRIBED
-    followed = (
-        following_count >= 2
-        or _has_word_like(words, "message")
-        or _has_word_like(words, "friends")
-        or any(phrase in text for phrase in _TIKTOK_FOLLOWED_HINDI)
-    )
-    if followed:
-        return Verdict.PASS
-    return Verdict.UNCLEAR
+def _tiktok_not_following(readings: list[str]) -> bool:
+    for text in readings:
+        words = _words(text)
+        if _means_one_of(words, "follow", ("following", "followers")) or any(
+            phrase in text for phrase in _TIKTOK_FOLLOW_HINDI
+        ):
+            return True
+    return False
+
+
+def _tiktok_followed(readings: list[str]) -> bool:
+    """Within one reading only: the profile's own "Following" count, plus a second
+    "following" — the button. The Message button proves nothing: creator pages show
+    it to people who don't follow. And the same word seen twice only because two
+    readings scanned the same page must not be mistaken for the button."""
+    for text in readings:
+        words = _words(text)
+        following_count = sum(1 for word in words if word == "following")
+        if (
+            following_count >= 2
+            or _has_word_like(words, "friends")
+            or any(phrase in text for phrase in _TIKTOK_FOLLOWED_HINDI)
+        ):
+            return True
+    return False
+
+
+def judge_readings(readings: list[str], target: dict) -> Verdict:
+    """The channel's own page must be visible before any button counts: a Subscribed
+    button on some other channel's page proves nothing about this one. TikTok signals
+    are judged reading by reading, never on the pile of words as a whole."""
+    if not mentions("\n".join(readings), target):
+        return Verdict.UNCLEAR
+    if target["platform"] == YOUTUBE:
+        text = "\n".join(readings)
+        return _judge_youtube(text, _words(text))
+    if target["platform"] == TIKTOK:
+        if _tiktok_not_following(readings):
+            return Verdict.NOT_SUBSCRIBED
+        if _tiktok_followed(readings):
+            return Verdict.PASS
+        return Verdict.UNCLEAR
+    raise ValueError(target["platform"])
 
 
 def judge(text: str, target: dict) -> Verdict:
-    """The channel's own page must be visible before any button counts: a Subscribed
-    button on some other channel's page proves nothing about this one."""
-    if not mentions(text, target):
-        return Verdict.UNCLEAR
-    words = _words(text)
-    if target["platform"] == YOUTUBE:
-        return _judge_youtube(text, words)
-    if target["platform"] == TIKTOK:
-        return _judge_tiktok(text, words)
-    raise ValueError(target["platform"])
+    return judge_readings([text], target)
 
 
 def choose_target(text: str, pending: list[dict]) -> dict:
@@ -167,14 +184,14 @@ def choose_target(text: str, pending: list[dict]) -> dict:
 
 
 async def _read(main: bytes, other: bytes, pending: list[dict]) -> Check:
-    """Read in English, then Hindi, trying both polarities. Text is merged, so the page
-    can come from one polarity and the button from the other."""
-    text = ""
+    """Read in English, then Hindi, trying both polarities. Readings are kept apart,
+    so a word repeated across readings cannot be mistaken for two words on the page."""
+    readings: list[str] = []
     for language in (ocr.ENGLISH, ocr.HINDI):
         for image in (main, other):
-            text += "\n" + await ocr.read_text(image, language)
-            target = choose_target(text, pending)
-            verdict = judge(text, target)
+            readings.append(await ocr.read_text(image, language))
+            target = choose_target("\n".join(readings), pending)
+            verdict = judge_readings(readings, target)
             if verdict != Verdict.UNCLEAR:
                 return Check(target=target, verdict=verdict)
     return Check(target=pending[0], verdict=Verdict.UNCLEAR)

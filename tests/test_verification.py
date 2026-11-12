@@ -7,7 +7,13 @@ import pytest
 
 from bot.db.targets import TIKTOK, YOUTUBE
 from bot.services import ocr, verification
-from bot.services.verification import Verdict, check_screenshot, choose_target, judge
+from bot.services.verification import (
+    Verdict,
+    check_screenshot,
+    choose_target,
+    judge,
+    judge_readings,
+)
 from tests import screenshots
 
 pytestmark = pytest.mark.skipif(shutil.which("tesseract") is None, reason="needs tesseract")
@@ -49,6 +55,12 @@ async def test_tiktok_followed_passes(state):
 async def test_tiktok_not_following_fails_despite_the_following_count():
     check = await check_screenshot(screenshots.tiktok(state="not"), [TT])
     assert check.verdict == Verdict.NOT_SUBSCRIBED
+
+
+async def test_tiktok_message_button_proves_nothing():
+    # Creator pages show Message to everyone, following or not.
+    check = await check_screenshot(screenshots.tiktok(state="message"), [TT])
+    assert check.verdict == Verdict.UNCLEAR
 
 
 @pytest.mark.parametrize("dark", [False, True])
@@ -156,11 +168,11 @@ def test_youtube_rules(text, verdict):
 @pytest.mark.parametrize(
     ("text", "verdict"),
     [
-        ("@cooledits 12 Following 4 Followers 1 Likes Message", Verdict.PASS),
+        ("@cooledits 12 Following 4 Followers Following", Verdict.PASS),  # Tab + button.
         ("@cooledits 12 Following 4 Followers 1 Likes Friends", Verdict.PASS),
-        ("@cooledits 12 Following 4 Followers Following", Verdict.PASS),
         ("@cooledits 12 Following 4 Followers 1 Likes Follow", Verdict.NOT_SUBSCRIBED),
-        ("Cool Edits 12 Following Message", Verdict.PASS),  # Name names the page too.
+        ("@cooledits 12 Following 4 Followers 1 Likes Message", Verdict.UNCLEAR),  # Everyone.
+        ("Cool Edits 12 Following Message", Verdict.UNCLEAR),  # Message proves nothing.
         ("12 Following 4 Followers Message", Verdict.UNCLEAR),  # No name: not this page.
         ("12 Following 4 Followers Folliow", Verdict.UNCLEAR),  # No name.
         ("Other Studio 12 Following 4 Followers Message", Verdict.UNCLEAR),  # Other profile.
@@ -169,11 +181,19 @@ def test_youtube_rules(text, verdict):
         ("12 Following 4 Followers", Verdict.UNCLEAR),
         ("nothing useful", Verdict.UNCLEAR),
         ("Cool Edits फ़ॉलो करें", Verdict.NOT_SUBSCRIBED),
-        ("Cool Edits मैसेज", Verdict.PASS),
+        ("Cool Edits फ़ॉलो कर रहे", Verdict.PASS),
     ],
 )
 def test_tiktok_rules(text, verdict):
     assert judge(text, TT) == verdict
+
+
+def test_a_word_repeated_across_readings_is_not_the_button():
+    # Two readings of the same page each show the "Following" count once: not a Follow.
+    twice = ["Cool Edits 4 Following", "Cool Edits 4 Following"]
+    assert judge_readings(twice, TT) == Verdict.UNCLEAR
+    # One reading with count and button together is what following looks like.
+    assert judge_readings(["Cool Edits 4 Following Following"], TT) == Verdict.PASS
 
 
 def test_short_names_dont_match_by_accident():

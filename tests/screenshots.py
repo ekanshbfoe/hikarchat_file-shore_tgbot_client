@@ -59,7 +59,14 @@ def youtube(name="Cool Edits", handle="@cooledits", subscribed=True, dark=False,
 
 
 def tiktok(name="Cool Edits", handle="@cooledits", state="following", dark=False):
-    button = {"following": "Message", "friends": "Friends", "not": "Follow"}[state]
+    # "message" is the creator page a non-follower sees: Message button, Follow state.
+    buttons = {
+        "following": "Following",
+        "friends": "Friends",
+        "not": "Follow",
+        "message": "Message",
+    }
+    button = buttons[state]
     return _screen(
         [
             (420, handle, 44, False),
