@@ -15,6 +15,9 @@ from bot.db.roles import Role
 
 log = logging.getLogger(__name__)
 MENU_TTL = 24 * 3600.0
+# The owner menu is short but important: re-assert it hourly so a wiped menu heals
+# by itself instead of staying wrong until the next restart.
+OWNER_MENU_TTL = 3600.0
 
 _USER = [BotCommand(command="start", description=texts.CMD_START)]
 _STAFF = [
@@ -42,8 +45,26 @@ def commands_for(role: Role) -> list[BotCommand]:
     return list(_USER)
 
 
+async def _apply(app: App, user_id: int, role: Role) -> None:
+    scope = BotCommandScopeChat(chat_id=user_id)
+    if role == Role.USER:
+        await app.bot.delete_my_commands(scope=scope)
+    else:
+        await app.bot.set_my_commands(commands_for(role), scope=scope)
+    ttl = OWNER_MENU_TTL if role == Role.OWNER else MENU_TTL
+    await app.store.cache.set(f"menu:{user_id}", role.value, ttl)
+
+
 async def set_default_menu(app: App) -> None:
+    """Called once at startup, before anybody has to go looking for a command."""
     await app.bot.set_my_commands(commands_for(Role.USER), scope=BotCommandScopeDefault())
+    for user_id in sorted(app.config.owner_ids):
+        try:
+            await _apply(app, user_id, Role.OWNER)
+        except Exception:
+            # Telegram only knows chats that have already talked to the bot; the rest
+            # get their menu from sync_menu on their first message.
+            log.info("Owner %s has not opened the bot yet", user_id)
 
 
 async def sync_menu(app: App, user_id: int, role: Role) -> None:
@@ -56,17 +77,19 @@ async def sync_menu(app: App, user_id: int, role: Role) -> None:
     if role == Role.USER and not found:
         return  # Everyone already has the default menu.
     try:
-        scope = BotCommandScopeChat(chat_id=user_id)
-        if role == Role.USER:
-            await app.bot.delete_my_commands(scope=scope)
-        else:
-            await app.bot.set_my_commands(commands_for(role), scope=scope)
-        await app.store.cache.set(key, role.value, MENU_TTL)
+        await _apply(app, user_id, role)
     except Exception:
         log.info("Could not update the menu for %s", user_id, exc_info=True)
 
 
 async def clear_menu(app: App, user_id: int) -> None:
+    if app.roles.is_owner(user_id):
+        # Removing a moderator row must not take the owner's own menu away.
+        try:
+            await _apply(app, user_id, Role.OWNER)
+        except Exception:
+            log.info("Could not restore the menu for %s", user_id, exc_info=True)
+        return
     try:
         await app.bot.delete_my_commands(scope=BotCommandScopeChat(chat_id=user_id))
     except Exception:
