@@ -23,6 +23,35 @@ class SettingsRepo:
         value = await self.store.read_through(f"setting:{key}", SHORT_TTL, loader)
         return default if value is None else value
 
+    async def get_many(self, *keys: str) -> dict[str, Any]:
+        """Several settings for one round trip. A missing one comes back as None, the
+        same as get() before its default is applied."""
+        values: dict[str, Any] = {}
+        wanted: list[str] = []
+        for key in keys:
+            found, value, fresh = await self.store.cache.get(f"setting:{key}")
+            if found and fresh:
+                values[key] = value
+            else:
+                wanted.append(key)
+        if wanted:
+
+            async def loader(conn):
+                rows = await conn.execute(
+                    select(settings.c.key, settings.c.value).where(settings.c.key.in_(wanted))
+                )
+                return {row.key: row.value for row in rows}
+
+            loaded = await self.store.db.read(loader)
+            for key in wanted:
+                value = loaded.get(key)
+                values[key] = value
+                if value is None:
+                    await self.store.cache.delete(f"setting:{key}")
+                else:
+                    await self.store.cache.set(f"setting:{key}", value, SHORT_TTL)
+        return values
+
     async def set(self, key: str, value: Any) -> None:
         statement = insert(settings).values(key=key, value=value)
         async with self.store.db.write() as conn:

@@ -160,6 +160,31 @@ async def test_settings_default_and_false_values(repos):
     assert await repos.settings.get("protect", True) is False
 
 
+async def test_several_settings_are_read_in_one_round_trip(repos, monkeypatch):
+    await repos.settings.set("caption", "hello")
+    await repos.settings.set("button", {"text": "Join", "url": "https://t.me/x"})
+    await repos.forget_local()
+
+    reads = 0
+    real = repos.store.db.read
+
+    async def counting(operation):
+        nonlocal reads
+        reads += 1
+        return await real(operation)
+
+    monkeypatch.setattr(repos.store.db, "read", counting)
+    wanted = await repos.settings.get_many("caption", "button", "missing")
+    assert wanted == {
+        "caption": "hello",
+        "button": {"text": "Join", "url": "https://t.me/x"},
+        "missing": None,
+    }
+    assert reads == 1
+    assert (await repos.settings.get_many("caption", "button"))["caption"] == "hello"
+    assert reads == 1  # The second look was answered locally.
+
+
 # --- links ---
 
 

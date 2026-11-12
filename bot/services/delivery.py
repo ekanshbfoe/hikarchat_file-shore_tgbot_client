@@ -55,10 +55,11 @@ def render_caption(template: str, item: dict) -> str:
 
 
 async def load_options(app: App) -> Options:
+    stored = await app.settings.get_many("protect_content", "custom_caption", "custom_button")
     return Options(
-        protect=await app.settings.get("protect_content", False),
-        caption=await app.settings.get("custom_caption"),
-        button=await app.settings.get("custom_button"),
+        protect=bool(stored["protect_content"]),
+        caption=stored["custom_caption"],
+        button=stored["custom_button"],
     )
 
 
