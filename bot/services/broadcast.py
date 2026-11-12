@@ -114,9 +114,11 @@ async def run(app: App, job: dict) -> None:
             await asyncio.sleep(PACE_SECONDS)
 
     if await app.jobs.is_cancelled(job_id):
+        await app.audit.record(job["created_by"], "broadcast_stopped", sent=sent, failed=failed)
         await _say(app, job, texts.BROADCAST_STOPPED.format(sent=sent, failed=failed))
         app.log.post(texts.LOG_BROADCAST_STOPPED.format(sent=sent, failed=failed))
         return
     await app.jobs.finish(job_id, DONE)
+    await app.audit.record(job["created_by"], "broadcast_done", sent=sent, failed=failed)
     await _say(app, job, texts.BROADCAST_DONE.format(sent=sent, failed=failed))
     app.log.post(texts.LOG_BROADCAST_DONE.format(sent=sent, failed=failed))

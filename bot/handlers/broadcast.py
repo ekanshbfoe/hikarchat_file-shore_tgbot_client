@@ -75,6 +75,7 @@ async def go(callback: CallbackQuery, app: App) -> None:
             "progress_id": progress.message_id,
         },
     )
+    await app.audit.record(callback.from_user.id, "broadcast_started", job=job_id)
     app.log.post(texts.LOG_BROADCAST_STARTED.format(actor=actor(callback.from_user)))
     app.runner.start(job_id, service.KIND)
 

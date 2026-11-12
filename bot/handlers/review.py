@@ -47,8 +47,10 @@ async def decide(callback: CallbackQuery, app: App) -> None:
         await _show_outcome(callback, None)
         return
     if approved:
+        await app.audit.record(callback.from_user.id, "review_approved", user=user_id)
         line = texts.REVIEW_APPROVED_BY.format(actor=actor(callback.from_user))
     else:
+        await app.audit.record(callback.from_user.id, "review_rejected", user=user_id)
         await app.users.set_banned(user_id, True)
         # Nothing should arrive automatically if they're ever unbanned.
         await app.users.set_pending(user_id, None)

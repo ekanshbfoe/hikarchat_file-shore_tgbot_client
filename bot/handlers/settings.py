@@ -395,6 +395,7 @@ async def mods_save(message: Message, state: FSMContext, app: App) -> None:
     match result:
         case AddResult.ADDED:
             name = texts.esc("@" + username.lstrip("@"))
+            await app.audit.record(message.from_user.id, "moderator_added", name=name)
             app.log.post(
                 texts.LOG_MODERATOR_ADDED.format(actor=actor(message.from_user), name=name)
             )
@@ -411,6 +412,11 @@ async def mods_save(message: Message, state: FSMContext, app: App) -> None:
 async def mods_remove(callback: CallbackQuery, state: FSMContext, app: App) -> None:
     removed, user_id = await app.roles.remove(int(callback.data.rsplit(":", 1)[1]))
     if removed:
+        await app.audit.record(
+            callback.from_user.id,
+            "moderator_removed",
+            user=user_id if user_id else None,
+        )
         app.log.post(texts.LOG_MODERATOR_REMOVED.format(actor=actor(callback.from_user)))
     if removed and user_id:
         # End anything they had open and take the commands out of their menu.

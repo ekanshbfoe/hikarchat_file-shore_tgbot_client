@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from aiogram import Bot
 
 from bot.config import Settings
+from bot.db.audit import AuditRepo
 from bot.db.jobs import JobsRepo
 from bot.db.links import LinksRepo
 from bot.db.roles import RolesRepo
@@ -26,6 +27,7 @@ class App:
     links: LinksRepo = field(init=False)
     targets: TargetsRepo = field(init=False)
     jobs: JobsRepo = field(init=False)
+    audit: AuditRepo = field(init=False)
     log: ActivityLog = field(init=False)
     runner: object = None
 
@@ -36,6 +38,7 @@ class App:
         self.links = LinksRepo(self.store)
         self.targets = TargetsRepo(self.store)
         self.jobs = JobsRepo(self.store)
+        self.audit = AuditRepo(self.store)
         self.log = ActivityLog(self)
 
     async def bot_username(self) -> str:
