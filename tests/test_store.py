@@ -52,6 +52,14 @@ async def test_not_found_is_never_cached(store):
     assert await store.read_through("k", 60, loader_for(store)) == "created now"
 
 
+async def test_not_found_is_cached_when_the_caller_asks(store):
+    store.db.value = None
+    assert await store.read_through("k", 60, loader_for(store), none_ttl=60) is None
+    store.db.value = "created now"
+    assert await store.read_through("k", 60, loader_for(store), none_ttl=60) is None
+    assert store.db.calls == 1
+
+
 async def test_cloud_outage_uses_expired_copy(store):
     await store.read_through("k", -1, loader_for(store))
     store.db.error = OSError("down")

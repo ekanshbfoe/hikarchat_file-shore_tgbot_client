@@ -25,9 +25,12 @@ class Store:
         key: str,
         ttl: float | Callable[[Any], float],
         loader: Callable[..., Awaitable[Any]],
+        none_ttl: float | None = None,
     ) -> Any:
-        """Local first, then cloud. None ("not found") is never cached, so a brand new
-        record is visible at once. If the cloud is down an expired copy stands in."""
+        """Local first, then cloud. None ("not found") is not cached, so a brand new
+        record is visible at once — unless none_ttl is given, for the callers where
+        "not found" is the ordinary answer and asking again every time is the waste.
+        If the cloud is down an expired copy stands in."""
         found, value, fresh = await self.cache.get(key)
         if found and fresh:
             return value
@@ -39,7 +42,10 @@ class Store:
                 return value
             raise
         if loaded is None:
-            await self.cache.delete(key)
+            if none_ttl is None:
+                await self.cache.delete(key)
+            else:
+                await self.cache.set(key, None, none_ttl)
         else:
             await self.cache.set(key, loaded, ttl(loaded) if callable(ttl) else ttl)
         return loaded

@@ -58,3 +58,33 @@ async def test_clearing_removes_the_row(storage):
     await storage.set_data(KEY, {})
     assert await storage.get_state(KEY) is None
     assert await storage.get_data(KEY) == {}
+
+
+async def test_asking_twice_about_a_missing_session_asks_the_cloud_once(storage, monkeypatch):
+    reads = 0
+    real = storage.store.db.read
+
+    async def counting(operation):
+        nonlocal reads
+        reads += 1
+        return await real(operation)
+
+    monkeypatch.setattr(storage.store.db, "read", counting)
+    assert await storage.get_state(KEY) is None
+    assert await storage.get_state(KEY) is None
+    assert reads == 1
+
+
+async def test_clearing_a_session_that_never_existed_writes_nothing(storage, monkeypatch):
+    writes = 0
+    real = storage.store.db.write
+
+    def counting():
+        nonlocal writes
+        writes += 1
+        return real()
+
+    monkeypatch.setattr(storage.store.db, "write", counting)
+    await storage.set_state(KEY, None)
+    await storage.set_data(KEY, {})
+    assert writes == 0

@@ -15,6 +15,11 @@ def _key(key: StorageKey) -> str:
     return f"{key.bot_id}:{key.chat_id}:{key.user_id}"
 
 
+# "No conversation" is the usual answer for a message, and aiogram asks for the state of
+# every single update. Remembering the empty answer briefly keeps that off the cloud.
+ABSENT_TTL = 60.0
+
+
 class PostgresStorage(BaseStorage):
     def __init__(self, store: Store):
         self.store = store
@@ -28,22 +33,30 @@ class PostgresStorage(BaseStorage):
             ).first()
             return {"state": row.state, "data": row.data} if row else None
 
-        loaded = await self.store.read_through(f"fsm:{row_key}", LONG_TTL, loader)
+        loaded = await self.store.read_through(
+            f"fsm:{row_key}", LONG_TTL, loader, none_ttl=ABSENT_TTL
+        )
         return loaded or {"state": None, "data": {}}
 
     async def _save(self, row_key: str, state: str | None, data: dict[str, Any]) -> None:
-        async with self.store.db.write() as conn:
-            if state is None and not data:
+        key = f"fsm:{row_key}"
+        if state is None and not data:
+            found, value, _ = await self.store.cache.get(key)
+            if found and value is None:
+                return  # There was never a row, so there is nothing to delete.
+            async with self.store.db.write() as conn:
                 await conn.execute(delete(fsm_state).where(fsm_state.c.key == row_key))
-            else:
-                statement = insert(fsm_state).values(key=row_key, state=state, data=data)
-                await conn.execute(
-                    statement.on_conflict_do_update(
-                        index_elements=[fsm_state.c.key],
-                        set_={"state": state, "data": data},
-                    )
+            await self.store.cache.set(key, None, ABSENT_TTL)
+            return
+        async with self.store.db.write() as conn:
+            statement = insert(fsm_state).values(key=row_key, state=state, data=data)
+            await conn.execute(
+                statement.on_conflict_do_update(
+                    index_elements=[fsm_state.c.key],
+                    set_={"state": state, "data": data},
                 )
-        await self.store.cache.set(f"fsm:{row_key}", {"state": state, "data": data}, LONG_TTL)
+            )
+        await self.store.cache.set(key, {"state": state, "data": data}, LONG_TTL)
 
     async def set_state(self, key: StorageKey, state: StateType = None) -> None:
         row_key = _key(key)
