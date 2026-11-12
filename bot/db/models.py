@@ -154,3 +154,15 @@ fsm_state = Table(
     Column("state", Text),
     Column("data", JSONB, nullable=False, server_default=text("'{}'::jsonb")),
 )
+
+# What each staff member did, so the owner can look back at a moderator's work.
+staff_actions = Table(
+    "staff_actions",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column("actor_id", BigInteger, nullable=False),
+    Column("action", String(32), nullable=False),
+    Column("details", JSONB, nullable=False, server_default=text("'{}'::jsonb")),
+    _now(),
+    Index("ix_staff_actions_actor", "actor_id", "id"),
+)

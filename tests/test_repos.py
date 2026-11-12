@@ -95,6 +95,21 @@ async def test_cannot_add_twice_or_owner_or_nonsense(repos):
     assert await repos.roles.add_by_username("", OWNER_ID) == AddResult.INVALID
 
 
+async def test_add_moderator_by_id_works_without_a_username(repos):
+    assert await repos.roles.add_by_id(55, OWNER_ID) == AddResult.ADDED
+    assert await repos.roles.resolve(55, None) == Role.MODERATOR  # No username at all.
+    moderator = (await repos.roles.list_moderators())[0]
+    assert moderator["user_id"] == 55 and moderator["username"] is None
+
+
+async def test_add_moderator_by_id_rejects_duplicates_owner_and_nonsense(repos):
+    await repos.roles.add_by_id(55, OWNER_ID)
+    assert await repos.roles.add_by_id(55, OWNER_ID) == AddResult.ALREADY
+    assert await repos.roles.add_by_id(OWNER_ID, OWNER_ID) == AddResult.IS_OWNER
+    assert await repos.roles.add_by_id(0, OWNER_ID) == AddResult.INVALID
+    assert await repos.roles.add_by_id(-5, OWNER_ID) == AddResult.INVALID
+
+
 async def test_removal_takes_effect_immediately(repos):
     await repos.roles.add_by_username("gone", OWNER_ID)
     assert await repos.roles.resolve(9, "gone") == Role.MODERATOR

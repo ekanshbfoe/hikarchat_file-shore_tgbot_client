@@ -276,12 +276,29 @@ BACKUP_CHANNEL_NOTICE = (
 MODERATORS_VIEW = "<b>Moderators</b>\n\nThey can create links, broadcast and ban users.\n\n{names}"
 MODERATORS_NONE = "No moderators yet."
 MODERATOR_ADD = "➕ Add moderator"
-MODERATOR_PROMPT = "Send the moderator's username, like <code>@name</code>."
+MODERATOR_PROMPT = (
+    "Send the moderator's @username, or their user number like <code>123456789</code>."
+)
 MODERATOR_ADDED = "{name} is now a moderator. They get access as soon as they open the bot."
 MODERATOR_ALREADY = "They're already a moderator."
 MODERATOR_IS_OWNER = "You're the owner, so you already have full access."
 MODERATOR_INVALID = "That doesn't look like a username. Please send it like <code>@name</code>."
 MODERATOR_REMOVED = "Moderator removed."
+BTN_MOD_ACTIVITY = "📜 Activity"
+MOD_ACTIVITY_TITLE = "<b>Recent activity</b>\n{name}\n\n{items}"
+MOD_ACTIVITY_NONE = "No activity yet."
+ACT_LINK_CREATED = "• {date} — created a link ({count} item(s))"
+ACT_LINK_EDITED = "• {date} — changed an editable link"
+ACT_LINK_DELETED = "• {date} — deleted an editable link"
+ACT_BROADCAST_STARTED = "• {date} — started a broadcast"
+ACT_BROADCAST_DONE = "• {date} — broadcast finished ({sent} sent)"
+ACT_BROADCAST_STOPPED = "• {date} — broadcast stopped ({sent} sent)"
+ACT_BAN = "• {date} — banned user {user}"
+ACT_UNBAN = "• {date} — unbanned user {user}"
+ACT_REVIEW_APPROVED = "• {date} — approved a review"
+ACT_REVIEW_REJECTED = "• {date} — not approved a review"
+ACT_MODERATOR_ADDED = "• {date} — added a moderator"
+ACT_MODERATOR_REMOVED = "• {date} — removed a moderator"
 
 # --- Force subscribe settings ---
 FS_VIEW = (

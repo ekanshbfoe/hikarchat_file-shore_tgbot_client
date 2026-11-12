@@ -1,3 +1,4 @@
+from bot.db.audit import AuditRepo
 from bot.db.links import LinksRepo
 from bot.db.local_cache import LocalCache
 from bot.db.roles import RolesRepo
@@ -17,6 +18,7 @@ class Repos:
         self.settings = SettingsRepo(store)
         self.links = LinksRepo(store)
         self.targets = TargetsRepo(store)
+        self.audit = AuditRepo(store)
 
     async def forget_local(self) -> None:
         """Simulate Render wiping the disk."""

@@ -181,6 +181,9 @@ async def change_item(callback: CallbackQuery, app: App) -> None:
     except StaleEditError:
         await callback.answer(texts.SPECIAL_STALE, show_alert=True)
     else:
+        await app.audit.record(
+            callback.from_user.id, "link_edited", code=code, count=len(link["items"])
+        )
         await callback.answer(texts.SPECIAL_UPDATED)
         app.log.post(
             texts.LOG_LINK_EDITED.format(
@@ -215,6 +218,7 @@ async def delete(callback: CallbackQuery, app: App) -> None:
     link = await _load(callback, app, callback.data.split(":")[2])
     if link:
         await app.links.delete(link["code"])
+        await app.audit.record(callback.from_user.id, "link_deleted", code=link["code"])
         app.log.post(
             texts.LOG_LINK_DELETED.format(
                 actor=actor(callback.from_user),

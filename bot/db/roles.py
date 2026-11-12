@@ -75,6 +75,26 @@ class RolesRepo:
         await self._invalidate()
         return result.rowcount > 0
 
+    async def add_by_id(self, user_id: int, added_by: int) -> AddResult:
+        """Add someone by their numeric user number, for people without a @username.
+        The row is bound at once: only the number is known, and it never changes."""
+        if user_id <= 0 or user_id == self.owner_id:
+            return AddResult.IS_OWNER if user_id == self.owner_id else AddResult.INVALID
+        async with self.store.db.write() as conn:
+            exists = (
+                await conn.execute(select(roles.c.id).where(roles.c.user_id == user_id))
+            ).scalar()
+            if exists:
+                return AddResult.ALREADY
+            try:
+                await conn.execute(
+                    roles.insert().values(user_id=user_id, added_by=added_by)
+                )
+            except Exception:
+                return AddResult.ALREADY  # A unique user_id means they are already in.
+        await self._invalidate()
+        return AddResult.ADDED
+
     async def add_by_username(self, username: str, added_by: int) -> AddResult:
         name = clean_username(username)
         if not name or not _USERNAME.fullmatch(name):

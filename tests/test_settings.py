@@ -158,6 +158,55 @@ async def test_add_and_remove_moderator(world):
     assert world.telegram.last_text(8) == texts.UNKNOWN_MESSAGE
 
 
+async def test_add_moderator_by_user_number(world):
+    await world.owner.tap("set:mods:add")
+    await world.owner.send("123456789")
+    assert "123456789" in world.telegram.last_text(OWNER_ID)
+
+    # Someone with no username at all, known only by their number.
+    mod = world.person(123456789)
+    await mod.send("/genlink")
+    assert world.telegram.last_text(123456789) == texts.COLLECT_PROMPT
+
+    moderator = (await world.app.roles.list_moderators())[0]
+    assert moderator["user_id"] == 123456789 and moderator["username"] is None
+    await world.owner.tap(f"set:mods:rm:{moderator['id']}")
+    await mod.send("/genlink")
+    assert world.telegram.last_text(123456789) == texts.UNKNOWN_MESSAGE
+
+
+async def test_moderator_activity_screen_shows_their_actions(world):
+    await world.app.roles.add_by_username("busy", OWNER_ID)
+    mod = world.person(8, "busy")
+    await mod.send("/genlink")
+    await mod.send("text")
+    await mod.tap("collect:done")
+    await mod.send("/ban 55")
+
+    await world.owner.tap("set:mods")
+    moderator = (await world.app.roles.list_moderators())[0]
+    await world.owner.tap(f"set:mods:act:{moderator['id']}")
+    text = world.telegram.last_text(OWNER_ID)
+    assert "banned user 55" in text
+    assert "created a link" in text
+
+
+async def test_activity_screen_with_nothing_yet(world):
+    await world.app.roles.add_by_id(777, OWNER_ID)
+    await world.owner.tap("set:mods")
+    moderator = (await world.app.roles.list_moderators())[0]
+    await world.owner.tap(f"set:mods:act:{moderator['id']}")
+    assert texts.MOD_ACTIVITY_NONE in world.telegram.last_text(OWNER_ID)
+
+
+async def test_moderators_cannot_open_someones_activity(world):
+    await world.app.roles.add_by_username("sneaky", OWNER_ID)
+    mod = world.person(8, "sneaky")
+    moderator = (await world.app.roles.list_moderators())[0]
+    await mod.tap(f"set:mods:act:{moderator['id']}")
+    assert "Recent activity" not in world.telegram.texts_to(8)
+
+
 async def test_owner_cannot_be_added_as_moderator(world):
     await world.owner.send("hi")
     await world.owner.tap("set:mods:add")

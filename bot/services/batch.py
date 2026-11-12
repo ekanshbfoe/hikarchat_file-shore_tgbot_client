@@ -118,6 +118,7 @@ async def run(app: App, job: dict) -> None:
         await app.links.delete(code)
         await _say(app, job, texts.BATCH_EMPTY)
         return
+    await app.audit.record(job["created_by"], "link_created", code=code, count=stored, kind=KIND)
     app.log.post(
         texts.LOG_LINK_CREATED.format(
             actor=payload.get("actor", job["created_by"]),

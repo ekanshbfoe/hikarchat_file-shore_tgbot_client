@@ -133,6 +133,9 @@ async def done(callback: CallbackQuery, state: FSMContext, app: App) -> None:
         except StaleEditError:
             await progress.edit_text(texts.SPECIAL_STALE)
             return
+        await app.audit.record(
+            callback.from_user.id, "link_edited", code=link["code"], count=len(merged)
+        )
         app.log.post(
             texts.LOG_LINK_EDITED.format(
                 actor=actor(callback.from_user), link=await share.plain_link(app, link["code"])
@@ -144,6 +147,9 @@ async def done(callback: CallbackQuery, state: FSMContext, app: App) -> None:
 
     title = data.get("title") if data["kind"] == SPECIAL else None
     code = await app.links.create(data["kind"], callback.from_user.id, items, title=title)
+    await app.audit.record(
+        callback.from_user.id, "link_created", code=code, count=len(items), kind=data["kind"]
+    )
     app.log.post(
         texts.LOG_LINK_CREATED.format(
             actor=actor(callback.from_user),
