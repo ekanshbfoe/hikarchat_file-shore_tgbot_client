@@ -353,21 +353,73 @@ async def backup_now(callback: CallbackQuery, app: App) -> None:
 # --- Moderators ---
 
 
+def _moderator_name(moderator: dict) -> str:
+    return (
+        f"@{moderator['username']}"
+        if moderator["username"]
+        else moderator["first_name"] or str(moderator["user_id"])
+    )
+
+
 async def _mods_view(app: App) -> tuple[str, InlineKeyboardMarkup]:
     moderators = await app.roles.list_moderators()
     rows = [[_button(texts.MODERATOR_ADD, "set:mods:add")]]
     lines = []
     for moderator in moderators:
-        name = (
-            f"@{moderator['username']}"
-            if moderator["username"]
-            else moderator["first_name"] or str(moderator["user_id"])
-        )
+        name = _moderator_name(moderator)
         lines.append(f"• {texts.esc(name)}")
-        rows.append([_button(f"{texts.BTN_REMOVE} {name}", f"set:mods:rm:{moderator['id']}")])
+        rows.append(
+            [
+                _button(f"{texts.BTN_REMOVE} {name}", f"set:mods:rm:{moderator['id']}"),
+                _button(texts.BTN_MOD_ACTIVITY, f"set:mods:act:{moderator['id']}"),
+            ]
+        )
     rows.append([BACK])
     names = "\n".join(lines) or texts.MODERATORS_NONE
     return texts.MODERATORS_VIEW.format(names=names), _keyboard(*rows)
+
+
+_ACTION_LINES = {
+    "link_created": texts.ACT_LINK_CREATED,
+    "link_edited": texts.ACT_LINK_EDITED,
+    "link_deleted": texts.ACT_LINK_DELETED,
+    "broadcast_started": texts.ACT_BROADCAST_STARTED,
+    "broadcast_done": texts.ACT_BROADCAST_DONE,
+    "broadcast_stopped": texts.ACT_BROADCAST_STOPPED,
+    "ban": texts.ACT_BAN,
+    "unban": texts.ACT_UNBAN,
+    "review_approved": texts.ACT_REVIEW_APPROVED,
+    "review_rejected": texts.ACT_REVIEW_REJECTED,
+    "moderator_added": texts.ACT_MODERATOR_ADDED,
+    "moderator_removed": texts.ACT_MODERATOR_REMOVED,
+}
+
+
+def _activity_lines(records: list[dict]) -> str:
+    lines = []
+    for record in records:
+        template = _ACTION_LINES.get(record["action"])
+        if template is None:
+            continue
+        date = record["created_at"].strftime("%d %b %H:%M")
+        lines.append(template.format(date=date, **record["details"]))
+    return "\n".join(lines) or texts.MOD_ACTIVITY_NONE
+
+
+@router.callback_query(F.data.startswith("set:mods:act:"), IsOwner())
+async def mods_activity(callback: CallbackQuery, app: App) -> None:
+    role_id = int(callback.data.rsplit(":", 1)[1])
+    moderators = await app.roles.list_moderators()
+    entry = next((moderator for moderator in moderators if moderator["id"] == role_id), None)
+    if entry is None:
+        await callback.answer(texts.BUTTON_EXPIRED)
+        return
+    records = await app.audit.recent(entry["user_id"]) if entry["user_id"] else []
+    text = texts.MOD_ACTIVITY_TITLE.format(
+        name=texts.esc(_moderator_name(entry)), items=_activity_lines(records)
+    )
+    await _show(callback, text, _keyboard([_button(texts.BTN_BACK, "set:mods")]))
+    await callback.answer()
 
 
 @router.callback_query(F.data == "set:mods", IsOwner())
