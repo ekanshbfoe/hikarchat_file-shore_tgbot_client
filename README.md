@@ -54,6 +54,7 @@ anything not yet posted. Shortener keys never go to the group.
 |---|---|---|
 | `BOT_TOKEN` | Yes | From @BotFather |
 | `OWNER_ID` | Yes | The client's numeric Telegram ID |
+| `OWNER_IDS` | No | Comma separated. Other people with exactly the owner's power |
 | `BACKUP_CHANNEL_ID` | Yes | The private channel, starting with `-100` |
 | `DATABASE_URL` | Yes | Any `postgres://` style URL |
 | `DATABASE_DIRECT_URL` | No | Non-pooled URL, used only for migrations |

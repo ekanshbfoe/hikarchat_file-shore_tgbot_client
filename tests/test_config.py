@@ -19,6 +19,15 @@ def test_moderator_usernames_are_normalised():
     assert settings.moderator_usernames == ["alice", "bob"]
 
 
+def test_extra_owners_come_from_the_environment(monkeypatch):
+    monkeypatch.setenv("OWNER_IDS", " 123, 456 ,,")
+    assert Settings(_env_file=None, **BASE).owner_ids == frozenset({1, 123, 456})
+
+
+def test_owner_alone_is_still_an_owner():
+    assert make().owner_ids == frozenset({1})
+
+
 def test_webhook_secret_is_stable_and_allowed_by_telegram():
     assert make().secret_token == make().secret_token
     assert make().secret_token.isalnum()

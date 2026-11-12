@@ -14,6 +14,11 @@ class Settings(BaseSettings):
 
     bot_token: str
     owner_id: int
+    # More people with exactly the owner's power, e.g. "123,456". The owner is the
+    # one the bot reports problems to, so they stay named separately.
+    extra_owner_ids: Annotated[list[int], NoDecode] = Field(
+        default_factory=list, validation_alias=AliasChoices("OWNER_IDS")
+    )
     backup_channel_id: int
     database_url: str
     database_direct_url: str | None = None
@@ -47,6 +52,13 @@ class Settings(BaseSettings):
     def _blank_is_none(cls, value):
         return None if value == "" else value
 
+    @field_validator("extra_owner_ids", mode="before")
+    @classmethod
+    def _split_owner_ids(cls, value):
+        if isinstance(value, str):
+            value = value.split(",")
+        return [int(str(item).strip()) for item in value if str(item).strip()]
+
     @field_validator("moderator_usernames", mode="before")
     @classmethod
     def _split_usernames(cls, value):
@@ -60,6 +72,11 @@ class Settings(BaseSettings):
         if not self.webhook_base_url:
             self.webhook_base_url = os.environ.get("RENDER_EXTERNAL_URL") or None
         return self
+
+    @property
+    def owner_ids(self) -> frozenset[int]:
+        """Everybody who has the owner's power, the client included."""
+        return frozenset({self.owner_id, *self.extra_owner_ids})
 
     @cached_property
     def secret_token(self) -> str:

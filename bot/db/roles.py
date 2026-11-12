@@ -6,6 +6,7 @@ and someone else later taking the old username gets nothing.
 """
 
 import re
+from collections.abc import Iterable
 from enum import StrEnum
 
 from sqlalchemy import delete, select, update
@@ -32,12 +33,17 @@ class AddResult(StrEnum):
 
 
 class RolesRepo:
-    def __init__(self, store: Store, owner_id: int):
+    def __init__(self, store: Store, owner_id: int, extra_owner_ids: Iterable[int] = ()):
         self.store = store
+        # The first one is who the bot reports problems to; all of them have its power.
         self.owner_id = owner_id
+        self.owner_ids = frozenset({owner_id, *extra_owner_ids})
+
+    def is_owner(self, user_id: int | None) -> bool:
+        return user_id is not None and user_id in self.owner_ids
 
     async def resolve(self, user_id: int, username: str | None) -> Role:
-        if user_id == self.owner_id:
+        if self.is_owner(user_id):
             return Role.OWNER
 
         async def loader(conn):
@@ -78,8 +84,10 @@ class RolesRepo:
     async def add_by_id(self, user_id: int, added_by: int) -> AddResult:
         """Add someone by their numeric user number, for people without a @username.
         The row is bound at once: only the number is known, and it never changes."""
-        if user_id <= 0 or user_id == self.owner_id:
-            return AddResult.IS_OWNER if user_id == self.owner_id else AddResult.INVALID
+        if self.is_owner(user_id):
+            return AddResult.IS_OWNER
+        if user_id <= 0:
+            return AddResult.INVALID
         async with self.store.db.write() as conn:
             exists = (
                 await conn.execute(select(roles.c.id).where(roles.c.user_id == user_id))
@@ -103,7 +111,7 @@ class RolesRepo:
             known_id = (
                 await conn.execute(select(users.c.id).where(users.c.username == name))
             ).scalar()
-            if known_id == self.owner_id:
+            if self.is_owner(known_id):
                 return AddResult.IS_OWNER
             condition = roles.c.user_id == known_id if known_id else None
             exists = (

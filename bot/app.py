@@ -33,7 +33,9 @@ class App:
 
     def __post_init__(self) -> None:
         self.users = UsersRepo(self.store)
-        self.roles = RolesRepo(self.store, self.config.owner_id)
+        self.roles = RolesRepo(
+            self.store, self.config.owner_id, self.config.extra_owner_ids
+        )
         self.settings = SettingsRepo(self.store)
         self.links = LinksRepo(self.store)
         self.targets = TargetsRepo(self.store)

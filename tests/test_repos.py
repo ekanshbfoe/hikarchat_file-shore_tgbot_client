@@ -1,7 +1,7 @@
 import pytest
 
 from bot.db.links import Item, StaleEditError, is_valid_code, new_code
-from bot.db.roles import AddResult, Role
+from bot.db.roles import AddResult, Role, RolesRepo
 from bot.db.targets import TELEGRAM, YOUTUBE, AddStatus
 from tests.helpers import OWNER_ID
 
@@ -58,6 +58,20 @@ async def test_pending_round_trip(repos):
 
 async def test_owner_comes_from_config(repos):
     assert await repos.roles.resolve(OWNER_ID, None) == Role.OWNER
+
+
+async def test_extra_owners_have_the_owner_role(repos):
+    roles = RolesRepo(repos.store, OWNER_ID, [7, 8])
+    assert await roles.resolve(7, None) == Role.OWNER
+    assert await roles.resolve(8, "anyone") == Role.OWNER
+    assert await roles.resolve(9, None) == Role.USER
+
+
+async def test_extra_owner_cannot_be_added_as_moderator(repos):
+    roles = RolesRepo(repos.store, OWNER_ID, [7])
+    assert await roles.add_by_id(7, OWNER_ID) == AddResult.IS_OWNER
+    await repos.users.touch(7, "dev_one", "Dev")
+    assert await roles.add_by_username("dev_one", OWNER_ID) == AddResult.IS_OWNER
 
 
 async def test_stranger_is_user(repos):
