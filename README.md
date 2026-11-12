@@ -57,7 +57,7 @@ anything not yet posted. Shortener keys never go to the group.
 | `OWNER_IDS` | No | Comma separated. Other people with exactly the owner's power |
 | `BACKUP_CHANNEL_ID` | Yes | The private channel, starting with `-100` |
 | `DATABASE_URL` | Yes | Any `postgres://` style URL |
-| `DATABASE_DIRECT_URL` | No | Non-pooled URL, used only for migrations |
+| `DATABASE_DIRECT_URL` | No | Non-pooled URL. Used for migrations and for the bot's own queries: a handful of long-lived connections have no reason to go through a pooler |
 | `MODERATOR_USERNAMES` | No | Comma separated. Applied once each, so removed moderators stay removed |
 | `LOG_CHAT_ID` | No | The client's logs group, starting with `-100`. Not the backup channel. The bot must be a member |
 | `DEV_CHAT_ID` | No | Where failure details go. Never give this chat to the client |
