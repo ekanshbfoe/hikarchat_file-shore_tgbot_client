@@ -276,7 +276,9 @@ BACKUP_CHANNEL_NOTICE = (
 MODERATORS_VIEW = "<b>Moderators</b>\n\nThey can create links, broadcast and ban users.\n\n{names}"
 MODERATORS_NONE = "No moderators yet."
 MODERATOR_ADD = "➕ Add moderator"
-MODERATOR_PROMPT = "Send the moderator's username, like <code>@name</code>."
+MODERATOR_PROMPT = (
+    "Send the moderator's @username, or their user number like <code>123456789</code>."
+)
 MODERATOR_ADDED = "{name} is now a moderator. They get access as soon as they open the bot."
 MODERATOR_ALREADY = "They're already a moderator."
 MODERATOR_IS_OWNER = "You're the owner, so you already have full access."

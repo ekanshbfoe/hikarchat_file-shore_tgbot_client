@@ -386,15 +386,20 @@ async def mods_add(callback: CallbackQuery, state: FSMContext) -> None:
 
 @router.message(SettingsFlow.moderator, IsOwner(), IsInput())
 async def mods_save(message: Message, state: FSMContext, app: App) -> None:
-    username = (message.text or "").strip()
-    result = await app.roles.add_by_username(username, message.from_user.id)
+    text = (message.text or "").strip()
+    if text.lstrip("@").isdigit():  # A user number, for people without a @username.
+        result = await app.roles.add_by_id(int(text.lstrip("@")), message.from_user.id)
+        name = texts.esc(text.lstrip("@"))
+    else:
+        result = await app.roles.add_by_username(text, message.from_user.id)
+        name = texts.esc("@" + text.lstrip("@"))
     if result == AddResult.INVALID:
+        # The conversation stays open: the owner can simply send it again.
         await message.answer(texts.MODERATOR_INVALID)
         return
     await state.clear()
     match result:
         case AddResult.ADDED:
-            name = texts.esc("@" + username.lstrip("@"))
             await app.audit.record(message.from_user.id, "moderator_added", name=name)
             app.log.post(
                 texts.LOG_MODERATOR_ADDED.format(actor=actor(message.from_user), name=name)

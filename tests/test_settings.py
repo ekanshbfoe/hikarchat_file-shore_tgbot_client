@@ -158,6 +158,23 @@ async def test_add_and_remove_moderator(world):
     assert world.telegram.last_text(8) == texts.UNKNOWN_MESSAGE
 
 
+async def test_add_moderator_by_user_number(world):
+    await world.owner.tap("set:mods:add")
+    await world.owner.send("123456789")
+    assert "123456789" in world.telegram.last_text(OWNER_ID)
+
+    # Someone with no username at all, known only by their number.
+    mod = world.person(123456789)
+    await mod.send("/genlink")
+    assert world.telegram.last_text(123456789) == texts.COLLECT_PROMPT
+
+    moderator = (await world.app.roles.list_moderators())[0]
+    assert moderator["user_id"] == 123456789 and moderator["username"] is None
+    await world.owner.tap(f"set:mods:rm:{moderator['id']}")
+    await mod.send("/genlink")
+    assert world.telegram.last_text(123456789) == texts.UNKNOWN_MESSAGE
+
+
 async def test_owner_cannot_be_added_as_moderator(world):
     await world.owner.send("hi")
     await world.owner.tap("set:mods:add")
