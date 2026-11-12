@@ -76,7 +76,6 @@ async def test_file_corrupted_while_running_recovers(tmp_path):
 async def test_work_finishing_after_shutdown_doesnt_reopen_the_cache(cache):
     import asyncio
     import threading
-    import time
 
     def worker_threads():
         return [t for t in threading.enumerate() if "connection_worker" in repr(t._target)]
@@ -88,9 +87,11 @@ async def test_work_finishing_after_shutdown_doesnt_reopen_the_cache(cache):
     assert cache._conn is None
     # An open connection's thread would stop the process from exiting. aiosqlite
     # resolves close() from inside that thread, so it can outlive the await by a
-    # moment; wait for it to finish rather than sampling at one instant.
-    deadline = time.monotonic() + 2
-    while worker_threads() and time.monotonic() < deadline:
+    # moment; wait for it to finish rather than sampling at one instant. A dead
+    # thread raises no event, so this has to look again until it is gone.
+    for _ in range(200):
+        if not worker_threads():
+            break
         await asyncio.sleep(0.01)
     assert not worker_threads()
 
