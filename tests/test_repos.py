@@ -53,6 +53,25 @@ async def test_pending_round_trip(repos):
     assert await repos.users.get_pending(1) is None
 
 
+async def test_a_pending_link_is_not_looked_up_twice(repos, monkeypatch):
+    await repos.users.touch(1, None, None)
+    reads = 0
+    real = repos.store.db.read
+
+    async def counting(operation):
+        nonlocal reads
+        reads += 1
+        return await real(operation)
+
+    monkeypatch.setattr(repos.store.db, "read", counting)
+    assert await repos.users.get_pending(1) is None
+    assert await repos.users.get_pending(1) is None
+    assert reads == 1
+    await repos.users.set_pending(1, "abc")
+    assert await repos.users.get_pending(1) == "abc"  # Straight from the new copy.
+    assert reads == 1
+
+
 # --- roles ---
 
 

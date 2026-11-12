@@ -1,5 +1,6 @@
 """Runs before every handler: records the user, works out their role, stops banned users."""
 
+import asyncio
 import logging
 from collections.abc import Awaitable, Callable
 from typing import Any
@@ -38,19 +39,29 @@ class IdentityMiddleware(BaseMiddleware):
         if user is None or user.is_bot:
             return None
 
-        try:
-            if await app.users.touch(user.id, user.username, user.first_name):
-                app.log.post(texts.LOG_NEW_USER.format(actor=actor(user)))
-        except Exception as error:
-            # Remembering a visitor isn't worth blocking them during a cloud hiccup.
-            if not is_transient(error):
-                raise
-            log.warning("Could not record user %s", user.id)
-
-        role = await app.roles.resolve(user.id, user.username)
+        # Three questions with nothing between them, so ask them at the same time.
+        # One after another they take three round trips on a cold cache.
+        remembered, role, banned = await asyncio.gather(
+            app.users.touch(user.id, user.username, user.first_name),
+            app.roles.resolve(user.id, user.username),
+            app.users.is_banned(user.id),
+            return_exceptions=True,
+        )
         data["role"] = role
 
-        if role == Role.USER and await app.users.is_banned(user.id):
+        if isinstance(remembered, BaseException):
+            # Remembering a visitor isn't worth blocking them during a cloud hiccup.
+            if not is_transient(remembered):
+                raise remembered
+            log.warning("Could not record user %s", user.id)
+        elif remembered:
+            app.log.post(texts.LOG_NEW_USER.format(actor=actor(user)))
+
+        for answer in (role, banned):
+            if isinstance(answer, BaseException):
+                raise answer
+
+        if role == Role.USER and banned:
             if isinstance(event, CallbackQuery):
                 await event.answer(texts.BANNED, show_alert=True)
             else:

@@ -86,11 +86,16 @@ class UsersRepo:
                 await conn.execute(select(users.c.pending_code).where(users.c.id == user_id))
             ).scalar()
 
-        return await self.store.db.read(loader)
+        # Most people are not half way through force subscribe, so the empty answer is
+        # worth keeping too: this is asked on every message somebody sends.
+        return await self.store.read_through(
+            f"pending:{user_id}", SHORT_TTL, loader, none_ttl=SHORT_TTL
+        )
 
     async def set_pending(self, user_id: int, code: str | None) -> None:
         async with self.store.db.write() as conn:
             await conn.execute(update(users).where(users.c.id == user_id).values(pending_code=code))
+        await self.store.cache.set(f"pending:{user_id}", code, SHORT_TTL)
 
     async def count_reachable(self) -> int:
         async def loader(conn):
