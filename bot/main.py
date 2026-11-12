@@ -152,7 +152,9 @@ def build_bot(config: Settings) -> Bot:
 async def build(config: Settings) -> tuple[App, Dispatcher]:
     cache = LocalCache(config.local_cache_path)
     await cache.open()
-    store = Store(Database(config.database_url), cache)
+    # The direct address lets Postgres prepare each statement once. A few long-lived
+    # connections have no reason to go through a pooler, and migrations already use it.
+    store = Store(Database(config.database_direct_url or config.database_url), cache)
     app = App(config=config, bot=build_bot(config), store=store)
     return app, build_dispatcher(app)
 

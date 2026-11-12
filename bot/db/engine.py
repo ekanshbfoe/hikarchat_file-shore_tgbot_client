@@ -54,15 +54,22 @@ def normalize_database_url(url: str) -> tuple[str, bool]:
     )
 
 
+def uses_prepared_statements(url: str) -> bool:
+    """False for a pooler address. Neon and Supabase both mark theirs with "-pooler",
+    and PgBouncer in transaction mode cannot keep a prepared statement for us, so every
+    query would be parsed again: a second round trip on each one."""
+    return "-pooler" not in urlsplit(url).netloc
+
+
 def build_engine(url: str) -> AsyncEngine:
     normalized, use_ssl = normalize_database_url(url)
     connect_args: dict = {
         "timeout": CONNECT_TIMEOUT_SECONDS,
         "command_timeout": COMMAND_TIMEOUT_SECONDS,
-        # Poolers such as Neon's and Supabase's cannot track prepared statements.
-        "statement_cache_size": 0,
-        "prepared_statement_name_func": lambda: f"__asyncpg_{uuid4()}__",
     }
+    if not uses_prepared_statements(normalized):
+        connect_args["statement_cache_size"] = 0
+        connect_args["prepared_statement_name_func"] = lambda: f"__asyncpg_{uuid4()}__"
     if use_ssl:
         connect_args["ssl"] = ssl_module.create_default_context()
     return create_async_engine(
@@ -70,7 +77,11 @@ def build_engine(url: str) -> AsyncEngine:
         pool_size=3,
         max_overflow=2,
         pool_timeout=30,
-        pool_pre_ping=True,
+        # A ping on checkout is a whole extra round trip on every operation, and it only
+        # protects against a connection the server has just dropped. Recycling well
+        # inside the database's idle limit covers the case that actually happens (a
+        # sleeping cloud database), and read() retries the rest.
+        pool_pre_ping=False,
         pool_recycle=POOL_RECYCLE_SECONDS,
         connect_args=connect_args,
     )

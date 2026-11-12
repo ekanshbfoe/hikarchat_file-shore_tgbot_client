@@ -3,7 +3,7 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
-from bot.db.engine import Database, is_transient, normalize_database_url
+from bot.db.engine import Database, is_transient, normalize_database_url, uses_prepared_statements
 
 
 @pytest.mark.parametrize(
@@ -24,6 +24,13 @@ from bot.db.engine import Database, is_transient, normalize_database_url
 )
 def test_any_url_style_is_accepted(url, expected, ssl):
     assert normalize_database_url(url) == (expected, ssl)
+
+
+def test_prepared_statements_are_kept_unless_a_pooler_is_in_the_way():
+    assert uses_prepared_statements("postgresql+asyncpg://u:p@ep-cool-1.aws.neon.tech/db")
+    assert not uses_prepared_statements(
+        "postgresql+asyncpg://u:p@ep-cool-1-pooler.aws.neon.tech/db"
+    )
 
 
 def test_connection_errors_are_transient_but_constraint_errors_are_not():
